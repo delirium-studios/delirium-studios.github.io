@@ -1,5 +1,5 @@
 // @ts-nocheck
-// Delirium OS · servidor en línea v1.10.2 · generado automáticamente, no editar.
+// Delirium OS · servidor en línea v1.10.3 · generado automáticamente, no editar.
 // Pégalo completo en Supabase > Edge Functions > Deploy a new function > Via Editor, con el nombre "delirium".
 import { Buffer } from "node:buffer";
 var __defProp = Object.defineProperty;

@@ -26,7 +26,7 @@
     root.querySelector('[data-retry]').onclick = () => boot();
     root.querySelector('[data-local]').onclick = async () => { if (await D.confirm('Usar datos de este equipo', 'La app se reiniciará sin la nube. Podrás volver a conectarte desde Ajustes.', 'Usar este equipo', 'violet')) window.dos.nube.desconectar(); };
   }
-  const art = `<div class="art"><img src="spiro.png" alt="Spiro, la mascota de Delirium"><div class="tag">FOLLOW THE GLOW · STAY DELIRIOUS</div></div>`;
+  const art = `<div class="art"><div class="art-rayos"></div>${D.espiralSvg()}<div class="art-velo"></div><div class="art-glow"></div><div class="art-orbita"></div><div class="art-spiro"><img src="spiro.png" alt="Spiro, la mascota de Delirium"></div><div class="tag">FOLLOW THE GLOW · STAY DELIRIOUS</div></div>`;
   function setupScreen() {
     root.innerHTML = `<div class="auth">${art}<div class="panel"><form novalidate>
       <div><span class="label">Primera vez</span><h1>Bienvenido a Delirium OS</h1></div>

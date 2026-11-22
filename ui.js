@@ -252,3 +252,19 @@ ideas: 'M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z', respue
   };
   D.empty = (title, text, btn = '') => `<div class="empty"><img src="spiro.png" alt=""><h3>${esc(title)}</h3><p>${text}</p>${btn}</div>`;
 })(window.DOS);
+
+// Espiral hipnótica de la pantalla de entrada (dos brazos, como las alas de Spiro). Se dibuja una vez y se reutiliza.
+D.espiralSvg = () => {
+  if (D._espiral) return D._espiral;
+  const b = 25, brazos = 2, max = 49, paso = 0.06, w = Math.PI * b / brazos; let d = '';
+  for (let k = 0; k < brazos; k++) {
+    const o = k * 2 * Math.PI / brazos, afuera = [], adentro = [];
+    for (let t = 0.4; t <= max; t += paso) {
+      const a = t + o, r1 = b * t, r2 = Math.max(0, b * t - w);
+      afuera.push((r1 * Math.cos(a)).toFixed(1) + ' ' + (r1 * Math.sin(a)).toFixed(1));
+      adentro.push((r2 * Math.cos(a)).toFixed(1) + ' ' + (r2 * Math.sin(a)).toFixed(1));
+    }
+    d += 'M' + afuera.join('L') + 'L' + adentro.reverse().join('L') + 'Z';
+  }
+  return (D._espiral = `<svg class="art-espiral" viewBox="-1190 -1190 2380 2380" aria-hidden="true"><path d="${d}" fill="#7d39eb"/></svg>`);
+};

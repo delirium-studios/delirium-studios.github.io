@@ -1,5 +1,5 @@
 // Delirium OS web: guarda la interfaz para abrir rápido. Los datos siempre vienen de la nube (nunca se guardan aquí).
-const CACHE = 'delirium-os-1.10.2';
+const CACHE = 'delirium-os-1.10.3';
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(["icono-192.png","icono-app.png","spiro.png","app.js","conexiones.js","docs.js","guia.js","i18n-en.js","i18n-pt.js","idioma.js","qrcode.js","redes.js","schema.js","schema2.js","schema3.js","ui.js","v16.js","v17.js","v18.js","v19.js","views.js","views3.js","styles.css","dos-web.js","config.js","manifest.webmanifest","app.html"])).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', (e) => {
