@@ -247,5 +247,5 @@ window.DOS = window.DOS || {};
     return `<div class="table-wrap"><table><thead><tr>${cols.map(c => `<th class="${c.num ? 'num' : ''}" data-sort="${c.sort || c.key}" title="Ordenar">${esc(c.label)}${sortKey === (c.sort || c.key) ? (sortDir > 0 ? ' ↑' : ' ↓') : ''}</th>`).join('')}</tr></thead>
       <tbody>${sorted.map(r => `<tr data-id="${esc(r.id)}">${cols.map(c => `<td class="${c.num ? 'num' : ''}">${c.render ? c.render(r) : esc(r[c.key] ?? '—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
   };
-  D.empty = (title, text, btn = '') => `<div class="empty"><img src="assets/spiro.png" alt=""><h3>${esc(title)}</h3><p>${text}</p>${btn}</div>`;
+  D.empty = (title, text, btn = '') => `<div class="empty"><img src="spiro.png" alt=""><h3>${esc(title)}</h3><p>${text}</p>${btn}</div>`;
 })(window.DOS);

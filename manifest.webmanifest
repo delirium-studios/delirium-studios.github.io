@@ -1,7 +1,7 @@
 {
  "name": "Delirium OS",
  "short_name": "Delirium OS",
- "start_url": "./",
+ "start_url": "./app.html",
  "scope": "./",
  "display": "standalone",
  "background_color": "#0b0b0d",
@@ -10,7 +10,7 @@
  "description": "El sistema de trabajo de Delirium Studios.",
  "icons": [
   {
-   "src": "assets/spiro.png",
+   "src": "spiro.png",
    "sizes": "512x512",
    "type": "image/png",
    "purpose": "any"

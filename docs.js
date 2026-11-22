@@ -7,11 +7,11 @@
     if (assets) return assets;
     try {
       assets = {
-        logo: await toDataUrl('assets/spiro.png', 'image/png'),
-        sora: await toDataUrl('assets/fonts/Sora-Bold.ttf', 'font/ttf'),
-        body: await toDataUrl('assets/fonts/SpaceGrotesk-Regular.ttf', 'font/ttf'),
-        bodyB: await toDataUrl('assets/fonts/SpaceGrotesk-Bold.ttf', 'font/ttf'),
-        mono: await toDataUrl('assets/fonts/SpaceMono-Regular.ttf', 'font/ttf'),
+        logo: await toDataUrl('spiro.png', 'image/png'),
+        sora: await toDataUrl('Sora-Bold.ttf', 'font/ttf'),
+        body: await toDataUrl('SpaceGrotesk-Regular.ttf', 'font/ttf'),
+        bodyB: await toDataUrl('SpaceGrotesk-Bold.ttf', 'font/ttf'),
+        mono: await toDataUrl('SpaceMono-Regular.ttf', 'font/ttf'),
       };
     } catch (e) { assets = { logo: '', sora: '', body: '', bodyB: '', mono: '' }; }
     return assets;

@@ -1,12 +1,12 @@
 /* Delirium OS — marca Delirium aplicada con prioridad en legibilidad. */
-@font-face { font-family: 'Sora'; src: url('assets/fonts/Sora-SemiBold.ttf'); font-weight: 600; }
-@font-face { font-family: 'Sora'; src: url('assets/fonts/Sora-Bold.ttf'); font-weight: 700; }
-@font-face { font-family: 'Sora'; src: url('assets/fonts/Sora-ExtraBold.ttf'); font-weight: 800; }
-@font-face { font-family: 'Space Grotesk'; src: url('assets/fonts/SpaceGrotesk-Regular.ttf'); font-weight: 400; }
-@font-face { font-family: 'Space Grotesk'; src: url('assets/fonts/SpaceGrotesk-Medium.ttf'); font-weight: 500; }
-@font-face { font-family: 'Space Grotesk'; src: url('assets/fonts/SpaceGrotesk-Bold.ttf'); font-weight: 700; }
-@font-face { font-family: 'Space Mono'; src: url('assets/fonts/SpaceMono-Regular.ttf'); font-weight: 400; }
-@font-face { font-family: 'Space Mono'; src: url('assets/fonts/SpaceMono-Bold.ttf'); font-weight: 700; }
+@font-face { font-family: 'Sora'; src: url('Sora-SemiBold.ttf'); font-weight: 600; }
+@font-face { font-family: 'Sora'; src: url('Sora-Bold.ttf'); font-weight: 700; }
+@font-face { font-family: 'Sora'; src: url('Sora-ExtraBold.ttf'); font-weight: 800; }
+@font-face { font-family: 'Space Grotesk'; src: url('SpaceGrotesk-Regular.ttf'); font-weight: 400; }
+@font-face { font-family: 'Space Grotesk'; src: url('SpaceGrotesk-Medium.ttf'); font-weight: 500; }
+@font-face { font-family: 'Space Grotesk'; src: url('SpaceGrotesk-Bold.ttf'); font-weight: 700; }
+@font-face { font-family: 'Space Mono'; src: url('SpaceMono-Regular.ttf'); font-weight: 400; }
+@font-face { font-family: 'Space Mono'; src: url('SpaceMono-Bold.ttf'); font-weight: 700; }
 
 :root, [data-theme="oscuro"] {
   --bg: #0b0b0d; --surface: #141418; --surface-2: #1c1c22; --surface-3: #24242c; --border: #2d2d37; --border-strong: #3d3d4a;

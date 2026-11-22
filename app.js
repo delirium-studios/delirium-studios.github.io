@@ -26,7 +26,7 @@
     root.querySelector('[data-retry]').onclick = () => boot();
     root.querySelector('[data-local]').onclick = async () => { if (await D.confirm('Usar datos de este equipo', 'La app se reiniciará sin la nube. Podrás volver a conectarte desde Ajustes.', 'Usar este equipo', 'violet')) window.dos.nube.desconectar(); };
   }
-  const art = `<div class="art"><img src="assets/spiro.png" alt="Spiro, la mascota de Delirium"><div class="tag">FOLLOW THE GLOW · STAY DELIRIOUS</div></div>`;
+  const art = `<div class="art"><img src="spiro.png" alt="Spiro, la mascota de Delirium"><div class="tag">FOLLOW THE GLOW · STAY DELIRIOUS</div></div>`;
   function setupScreen() {
     root.innerHTML = `<div class="auth">${art}<div class="panel"><form novalidate>
       <div><span class="label">Primera vez</span><h1>Bienvenido a Delirium OS</h1></div>
@@ -91,7 +91,7 @@
     const creatable = D.meta.modules.filter(m => m.level === 'W' && D.SCHEMA[m.key] && !['movimientos', 'equipo'].includes(m.key));
     const canTimer = D.meta.modules.some(m => m.key === 'horas' && m.level === 'W');
     root.innerHTML = `<div class="app"><aside class="sidebar">
-        <div class="brand"><span class="logo"><img src="assets/spiro.png" alt=""></span><div><b>Delirium OS</b><span>${esc(D.settings.web || 'staydelirious.com')}</span></div></div>
+        <div class="brand"><span class="logo"><img src="spiro.png" alt=""></span><div><b>Delirium OS</b><span>${esc(D.settings.web || 'staydelirious.com')}</span></div></div>
         <div class="side-tools"><button class="search-btn" data-palette title="Buscar (Ctrl + K)">${D.icon('search')} Buscar</button>${creatable.length ? `<button class="create-btn" data-create title="Crear algo nuevo" aria-label="Crear algo nuevo">${D.icon('plus')} Crear</button>` : ''}</div>
         <nav class="nav" aria-label="Menú principal">${groups.map(g => { const isClosed = g.name && closed.includes(g.name); return `${g.name ? `<button class="group" data-group="${esc(g.name)}" aria-expanded="${!isClosed}"><span class="label">${esc(g.name)}</span><span class="gcount hidden" data-gcount="${esc(g.name)}"></span>${D.icon('chevron')}</button>` : ''}<div class="gitems ${isClosed ? 'closed' : ''}" data-gitems="${esc(g.name)}">${g.items.map(m => `<a href="#/${m.key}" data-nav="${m.key}">${D.icon(m.key)}<span>${esc(m.key === 'inicio' && !role.staff ? 'Mi portal' : m.label)}</span><span class="count hidden" data-count="${m.key}"></span></a>`).join('')}</div>`; }).join('')}</nav>
         ${canTimer ? '<div class="timer" data-timer></div>' : ''}
@@ -99,7 +99,7 @@
           <div class="me-actions"><button class="icon-btn" data-theme title="Cambiar a tema ${D.me.tema === 'claro' ? 'oscuro' : 'claro'}" aria-label="Cambiar tema">${D.icon(D.me.tema === 'claro' ? 'moon' : 'sun')}</button>
           <button class="icon-btn" data-account title="Mi cuenta" aria-label="Mi cuenta">${D.icon('user')}</button>
           <button class="icon-btn" data-logout title="Cerrar sesión" aria-label="Cerrar sesión">${D.icon('logout')}</button></div></div>
-      </aside><div class="side-scrim" data-side-scrim></div><div class="mobile-top"><button class="icon-btn" data-menu aria-label="Abrir menú">${D.icon('menu')}</button><span class="logo"><img src="assets/spiro.png" alt=""></span><b>Delirium OS</b><button class="icon-btn" data-palette-m aria-label="Buscar" style="margin-left:auto">${D.icon('search')}</button></div><main class="main" id="view" tabindex="-1"></main></div>`;
+      </aside><div class="side-scrim" data-side-scrim></div><div class="mobile-top"><button class="icon-btn" data-menu aria-label="Abrir menú">${D.icon('menu')}</button><span class="logo"><img src="spiro.png" alt=""></span><b>Delirium OS</b><button class="icon-btn" data-palette-m aria-label="Buscar" style="margin-left:auto">${D.icon('search')}</button></div><main class="main" id="view" tabindex="-1"></main></div>`;
     const appEl = root.querySelector('.app'); const toggleSide = (v) => appEl.classList.toggle('side-open', v);
     root.querySelector('[data-menu]').onclick = () => toggleSide(true); root.querySelector('[data-side-scrim]').onclick = () => toggleSide(false);
     root.querySelector('[data-palette-m]').onclick = () => palette();
