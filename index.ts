@@ -1,5 +1,5 @@
 // @ts-nocheck
-// Delirium OS · servidor en línea v1.4.0 · generado automáticamente, no editar.
+// Delirium OS · servidor en línea v1.4.1 · generado automáticamente, no editar.
 // Pégalo completo en Supabase > Edge Functions > Deploy a new function > Via Editor, con el nombre "delirium".
 import { Buffer } from "node:buffer";
 var __defProp = Object.defineProperty;
@@ -91,6 +91,7 @@ var require_config = __commonJS({
       { key: "horas", label: "Registro de horas", group: "Operaci\xF3n", col: "timesheets" },
       { key: "redes", label: "Calendario de redes", group: "Marketing y redes", col: "posts" },
       { key: "anuncios", label: "Campa\xF1as de anuncios", group: "Marketing y redes", col: "campaigns" },
+      { key: "metricas", label: "M\xE9tricas de redes", group: "Marketing y redes", col: null },
       { key: "cuentas", label: "Redes conectadas", group: "Marketing y redes", col: "socials" },
       { key: "juegos", label: "Juegos", group: "Juegos", col: "games" },
       { key: "bugs", label: "Bugs y QA", group: "Juegos", col: "bugs" },
@@ -148,6 +149,7 @@ var require_config = __commonJS({
       soporte: { founder: "W:all", coo: "W:all", pm: "W:assigned", ventas: "W:assigned", social: "W:assigned", creativo_dir: "R:all", productor: "R:all", cliente: "W:client", cliente_eq: "W:client" },
       piezas: { founder: "W:all", coo: "W:all", creativo_dir: "W:all", productor: "W:all", pm: "W:assigned", social: "W:assigned", mediabuyer: "W:assigned", creativo: "W:assigned", freelancer: "W:assigned", cliente: "R:client", cliente_eq: "R:client" },
       redes: { founder: "W:all", coo: "W:all", creativo_dir: "W:all", social: "W:assigned", pm: "W:assigned", mediabuyer: "R:assigned", creativo: "R:assigned", freelancer: "R:assigned", cliente: "R:client", cliente_eq: "R:client" },
+      metricas: { founder: "R:all", coo: "R:all", creativo_dir: "R:all", social: "R:all", pm: "R:all", mediabuyer: "R:all", ventas: "R:all", cliente: "R:client", cliente_eq: "R:client" },
       cuentas: { founder: "W:all", coo: "W:all", creativo_dir: "W:all", social: "W:all", pm: "R:all", mediabuyer: "R:all", cliente: "W:client", cliente_eq: "R:client" },
       anuncios: { founder: "W:all", coo: "W:all", mediabuyer: "W:assigned", social: "R:assigned", pm: "R:assigned", finanzas: "R:all", ventas: "R:all", creativo_dir: "R:all", cliente: "R:client", cliente_eq: "R:client" },
       juegos: { founder: "W:all", coo: "W:all", productor: "W:all", creativo_dir: "W:all", pm: "W:assigned", creativo: "R:assigned", freelancer: "R:assigned", social: "R:all", mediabuyer: "R:all", legal: "R:all", ventas: "R:all", cliente: "R:client", cliente_eq: "R:client" },
@@ -345,7 +347,7 @@ META (Facebook e Instagram Ads) \xB7 Ajustes \u2192 Conexiones
 
 GITHUB (actualizaciones autom\xE1ticas) \xB7 Ajustes \u2192 Conexiones
 \u2022 Crea un repositorio p\xFAblico solo para las versiones, por ejemplo delirium-os-versiones (el c\xF3digo del programa no va ah\xED).
-\u2022 En cada versi\xF3n nueva: Releases \u2192 Draft a new release \u2192 etiqueta v1.4.0 (la versi\xF3n) \u2192 adjunta el instalador .exe y su archivo .sha256 \u2192 Publish.
+\u2022 En cada versi\xF3n nueva: Releases \u2192 Draft a new release \u2192 etiqueta v1.4.1 (la versi\xF3n) \u2192 adjunta el instalador .exe y su archivo .sha256 \u2192 Publish.
 \u2022 Cada PC ver\xE1 el aviso "Actualizar ahora" y se actualizar\xE1 sola, conservando los datos.`
       },
       {
@@ -679,7 +681,9 @@ var require_core = __commonJS({
       "purchases",
       "vault",
       "socials",
-      "social_tokens"
+      "social_tokens",
+      "social_stats",
+      "social_posts"
     ];
     var PIECE_CLIENT_STATES = ["Revisi\xF3n del cliente", "Cambios pedidos", "Aprobada"];
     var POST_HIDDEN_FOR_CLIENT = ["Idea", "En dise\xF1o"];
@@ -1124,6 +1128,7 @@ var require_core = __commonJS({
         if (col === "socials") {
           if (!r.client_id) r._cliente = "Delirium Studios";
           r._vence_dias = r.vence ? Math.ceil((Date.parse(r.vence) - Date.now()) / 864e5) : null;
+          r._m30 = this.resumenCuenta(r, 30);
         }
         if (col === "posts" && (r.publicaciones || []).length) {
           r._auto_publicadas = r.publicaciones.filter((x) => x.estado === "Publicado").length;
@@ -1259,7 +1264,11 @@ var require_core = __commonJS({
           if (p) p.stock = num(p.stock) - this.moveDelta(rec);
         }
         this.db[col].splice(i, 1);
-        if (col === "socials") this.db.social_tokens = this.db.social_tokens.filter((t) => t.id !== id);
+        if (col === "socials") {
+          this.db.social_tokens = this.db.social_tokens.filter((t) => t.id !== id);
+          this.db.social_stats = this.db.social_stats.filter((x) => x.cuenta_id !== id);
+          this.db.social_posts = this.db.social_posts.filter((x) => x.cuenta_id !== id);
+        }
         if (col === "projects") this.db.tasks = this.db.tasks.filter((t) => t.project_id !== id);
         this.audit("borrar", m, id, this.label(col, rec));
         this.persist();
@@ -2222,6 +2231,173 @@ var require_core = __commonJS({
         post.alcance = conM.reduce((a, x) => a + (Number(x.metricas.alcance) || 0), 0);
         post.interacciones = conM.reduce((a, x) => a + (Number(x.metricas.interacciones) || 0), 0);
       }
+      // ───── métricas de la cuenta completa ─────
+      // social_stats: un registro por cuenta y mes, con los días dentro (pocos registros aunque pasen años).
+      redesGuardarDia(c, dia, m) {
+        if (!c || !m) return;
+        const id = `${c.id}:${dia.slice(0, 7)}`;
+        let r = this.db.social_stats.find((x) => x.id === id);
+        if (!r) {
+          r = { id, cuenta_id: c.id, client_id: c.client_id || null, red: c.red, mes: dia.slice(0, 7), dias: {} };
+          this.db.social_stats.push(r);
+        }
+        const limpio = Object.fromEntries(Object.entries(m).filter(([, x]) => x !== null && x !== void 0 && Number.isFinite(Number(x))).map(([k, x]) => [k, Number(x)]));
+        r.dias[dia.slice(8, 10)] = { ...r.dias[dia.slice(8, 10)] || {}, ...limpio };
+        r.actualizado = now();
+      }
+      redesDiaGuardado(c, dia) {
+        const r = this.db.social_stats.find((x) => x.id === `${c.id}:${dia.slice(0, 7)}`);
+        const d = r && r.dias[dia.slice(8, 10)];
+        return !!(d && (d.alcance !== void 0 || d.vistas !== void 0 || d.interacciones !== void 0));
+      }
+      redesGuardarContenido(c, lista) {
+        const ahora = now();
+        const vivos = new Map(this.db.social_posts.map((x) => [x.id, x]));
+        for (const x of lista || []) {
+          const id = `${c.id}:${x.post_id}`;
+          const r = vivos.get(id);
+          const datos = { ...x, id, cuenta_id: c.id, client_id: c.client_id || null, red: c.red, cuenta: c.nombre || "", actualizado: ahora };
+          if (r) Object.assign(r, datos);
+          else {
+            this.db.social_posts.push(datos);
+            vivos.set(id, datos);
+          }
+          for (const post of this.db.posts) {
+            const pub = (post.publicaciones || []).find((p) => p.cuenta_id === c.id && String(p.id) === String(x.post_id));
+            if (pub) this.redesMetricas(post, c.red, { alcance: x.alcance || 0, vistas: x.vistas || 0, me_gusta: x.me_gusta || 0, comentarios: x.comentarios || 0, compartidos: x.compartidos || 0, guardados: x.guardados || 0, interacciones: x.interacciones || 0 });
+          }
+        }
+        const limite = Date.now() - 400 * 864e5;
+        this.db.social_posts = this.db.social_posts.filter((x) => x.cuenta_id !== c.id || Date.parse(x.fecha || 0) >= limite);
+      }
+      // Resumen corto de una cuenta para su ficha: últimos N días.
+      resumenCuenta(c, dias = 30) {
+        if (!c || !c.cuenta_ext) return null;
+        const desde = new Date(Date.now() - (dias - 1) * 864e5).toISOString().slice(0, 10);
+        const antes = new Date(Date.now() - dias * 864e5).toISOString().slice(0, 10);
+        const ds = [];
+        for (const r of this.db.social_stats.filter((x) => x.cuenta_id === c.id)) for (const [d, v] of Object.entries(r.dias || {})) ds.push({ fecha: `${r.mes}-${d}`, ...v });
+        ds.sort((a, b) => a.fecha < b.fecha ? -1 : 1);
+        const en = ds.filter((x) => x.fecha >= desde);
+        const pubs = this.db.social_posts.filter((x) => x.cuenta_id === c.id && String(x.fecha || "").slice(0, 10) >= desde);
+        const diarias = en.some((x) => x.alcance !== void 0 || x.interacciones !== void 0);
+        const suma = (k) => {
+          const fuente = diarias ? en : pubs;
+          const v = fuente.filter((x) => x[k] !== null && x[k] !== void 0);
+          return v.length ? v.reduce((a, x) => a + (Number(x[k]) || 0), 0) : null;
+        };
+        const segAntes = [...ds].reverse().find((x) => x.fecha <= antes && x.seguidores !== void 0) || [...c.historial || []].reverse().find((x) => x.fecha <= antes) || ds.find((x) => x.seguidores !== void 0) || (c.historial || [])[0];
+        const o = { dias, alcance: suma("alcance"), vistas: suma("vistas"), interacciones: suma("interacciones"), publicaciones: pubs.length, crecimiento: segAntes ? (c.seguidores || 0) - (segAntes.seguidores || 0) : null, metricas_al: c.metricas_al || null };
+        const base = o.alcance || o.vistas;
+        o.er = base && o.interacciones !== null ? Math.round(o.interacciones / base * 1e4) / 100 : null;
+        return o.alcance === null && o.vistas === null && o.interacciones === null && !pubs.length ? { ...o, vacio: true } : o;
+      }
+      redesAudiencia(c, a) {
+        if (c && a) c.audiencia = { ...a, fecha: now() };
+      }
+      // Panel de métricas: { client_id, red, dias (7–365), hasta 'AAAA-MM-DD' } → totales, comparación con el período anterior, serie diaria, por red, por cliente, mejores publicaciones y audiencia.
+      metricasRedes(p = {}) {
+        this.requireUser();
+        const { level, scope } = this.perm("metricas");
+        if (!level) throw new AccessError("No tienes acceso a las m\xE9tricas de redes.");
+        const dias = Math.min(365, Math.max(1, Math.round(Number(p.dias) || 30)));
+        const dStr = (t) => new Date(t).toISOString().slice(0, 10);
+        const finT = p.hasta && /^\d{4}-\d{2}-\d{2}$/.test(p.hasta) ? Date.parse(p.hasta + "T00:00:00Z") : Date.parse(dStr(Date.now()) + "T00:00:00Z");
+        const ini = dStr(finT - (dias - 1) * 864e5), fin = dStr(finT), pIni = dStr(finT - (2 * dias - 1) * 864e5), pFin = dStr(finT - dias * 864e5);
+        let cuentas = this.db.socials.filter((c) => this.inScope("socials", c, scope) && c.cuenta_ext);
+        if (p.client_id) cuentas = cuentas.filter((c) => (c.client_id || "") === (p.client_id === "estudio" ? "" : p.client_id));
+        if (p.red) cuentas = cuentas.filter((c) => c.red === p.red);
+        const ids = new Set(cuentas.map((c) => c.id));
+        const CAMPOS = ["alcance", "vistas", "interacciones", "me_gusta", "comentarios", "compartidos", "guardados", "visitas_perfil", "clics_web", "toques_enlaces", "nuevos_seguidores", "dejaron", "cuentas_interactuaron"];
+        const diasDe = (cid) => {
+          const out = [];
+          for (const r of this.db.social_stats.filter((x) => x.cuenta_id === cid)) for (const [d, v] of Object.entries(r.dias || {})) out.push({ fecha: `${r.mes}-${d}`, ...v });
+          return out.sort((a, b) => a.fecha < b.fecha ? -1 : 1);
+        };
+        const postsDe = (desde, hasta) => this.db.social_posts.filter((x) => ids.has(x.cuenta_id) && String(x.fecha || "").slice(0, 10) >= desde && String(x.fecha || "").slice(0, 10) <= hasta);
+        const segEn = (c, fecha) => {
+          const ds = diasDe(c.id).filter((x) => x.fecha <= fecha && x.seguidores !== void 0);
+          if (ds.length) return ds[ds.length - 1].seguidores;
+          const h = (c.historial || []).filter((x) => x.fecha <= fecha);
+          return h.length ? h[h.length - 1].seguidores : null;
+        };
+        const resumen = (lista, desde, hasta) => {
+          const t = Object.fromEntries(CAMPOS.map((k) => [k, 0]));
+          const tiene = {};
+          for (const c of lista) for (const d of diasDe(c.id).filter((x) => x.fecha >= desde && x.fecha <= hasta)) for (const k of CAMPOS) if (d[k] !== void 0) {
+            t[k] += d[k];
+            tiene[k] = true;
+          }
+          const pubs2 = this.db.social_posts.filter((x) => lista.some((c) => c.id === x.cuenta_id) && String(x.fecha || "").slice(0, 10) >= desde && String(x.fecha || "").slice(0, 10) <= hasta);
+          for (const c of lista) {
+            if (diasDe(c.id).some((x) => x.fecha >= desde && x.fecha <= hasta && (x.alcance !== void 0 || x.interacciones !== void 0))) continue;
+            for (const x of pubs2.filter((y) => y.cuenta_id === c.id)) for (const k of ["vistas", "interacciones", "me_gusta", "comentarios", "compartidos", "guardados", "alcance"]) if (x[k] !== null && x[k] !== void 0) {
+              t[k] += Number(x[k]) || 0;
+              tiene[k] = true;
+            }
+          }
+          for (const k of CAMPOS) if (!tiene[k]) t[k] = null;
+          const segFin = lista.reduce((a, c) => a + (segEn(c, hasta) ?? 0), 0);
+          const segIni = lista.reduce((a, c) => a + (segEn(c, dStr(Date.parse(desde) - 864e5)) ?? segEn(c, desde) ?? 0), 0);
+          const nPub = pubs2.length;
+          const base = t.alcance || t.vistas || 0;
+          return {
+            ...t,
+            seguidores: segFin,
+            crecimiento: segFin - segIni,
+            crecimiento_pct: segIni ? Math.round((segFin - segIni) / segIni * 1e3) / 10 : null,
+            publicaciones: nPub,
+            er_alcance: base && t.interacciones !== null ? Math.round(t.interacciones / base * 1e4) / 100 : null,
+            er_seguidores: segFin && nPub && t.interacciones !== null ? Math.round(t.interacciones / nPub / segFin * 1e4) / 100 : null
+          };
+        };
+        const actual = resumen(cuentas, ini, fin), previo = resumen(cuentas, pIni, pFin);
+        const cambio = {};
+        for (const k of [...CAMPOS, "seguidores", "publicaciones", "er_alcance"]) cambio[k] = actual[k] !== null && previo[k] ? Math.round((actual[k] - previo[k]) / previo[k] * 1e3) / 10 : null;
+        const serie = [];
+        for (let t = Date.parse(ini); t <= finT; t += 864e5) {
+          const f = dStr(t);
+          const o = { fecha: f, alcance: 0, vistas: 0, interacciones: 0, seguidores: 0 };
+          for (const c of cuentas) {
+            const d = diasDe(c.id).find((x) => x.fecha === f) || {};
+            o.alcance += d.alcance || 0;
+            o.vistas += d.vistas || 0;
+            o.interacciones += d.interacciones || 0;
+            o.seguidores += segEn(c, f) ?? 0;
+          }
+          for (const x of postsDe(f, f)) if (!diasDe(x.cuenta_id).some((d) => d.fecha === f && d.interacciones !== void 0)) {
+            o.interacciones += x.interacciones || 0;
+            o.vistas += x.vistas || 0;
+          }
+          serie.push(o);
+        }
+        const porRed = [...new Set(cuentas.map((c) => c.red))].map((red) => ({ red, cuentas: cuentas.filter((c) => c.red === red).length, ...resumen(cuentas.filter((c) => c.red === red), ini, fin) }));
+        const porCliente = p.client_id || this.isClient() ? [] : [...new Set(cuentas.map((c) => c.client_id || ""))].map((cid) => ({ client_id: cid || "estudio", cliente: cid ? this.nameOf("clients", cid) : "Delirium Studios", redes: [...new Set(cuentas.filter((c) => (c.client_id || "") === cid).map((c) => c.red))], ...resumen(cuentas.filter((c) => (c.client_id || "") === cid), ini, fin) })).sort((a, b) => (b.interacciones || 0) - (a.interacciones || 0));
+        const pubs = postsDe(ini, fin).map((x) => ({ ...x, er: x.alcance || x.vistas ? Math.round((x.interacciones || 0) / (x.alcance || x.vistas) * 1e4) / 100 : null, cliente: x.client_id ? this.nameOf("clients", x.client_id) : "Delirium Studios" })).sort((a, b) => (b.interacciones || 0) - (a.interacciones || 0));
+        const tipos = {};
+        for (const x of pubs) {
+          const k = `${x.red} \xB7 ${x.tipo || "Otro"}`;
+          tipos[k] = tipos[k] || { formato: k, publicaciones: 0, interacciones: 0, alcance: 0 };
+          tipos[k].publicaciones++;
+          tipos[k].interacciones += x.interacciones || 0;
+          tipos[k].alcance += x.alcance || x.vistas || 0;
+        }
+        return {
+          desde: ini,
+          hasta: fin,
+          dias,
+          actual,
+          previo,
+          cambio,
+          serie,
+          porRed,
+          porCliente,
+          publicaciones: pubs.slice(0, 200),
+          formatos: Object.values(tipos).map((t) => ({ ...t, promedio: Math.round(t.interacciones / t.publicaciones) })).sort((a, b) => b.promedio - a.promedio),
+          audiencia: cuentas.filter((c) => c.audiencia).map((c) => ({ cuenta: c.nombre, red: c.red, cliente: c.client_id ? this.nameOf("clients", c.client_id) : "Delirium Studios", ...c.audiencia })),
+          cuentas: cuentas.map((c) => ({ id: c.id, client_id: c.client_id || "estudio", red: c.red, nombre: c.nombre, estado: c.estado, cliente: c.client_id ? this.nameOf("clients", c.client_id) : "Delirium Studios", seguidores: c.seguidores || 0, metricas_al: c.metricas_al || null, ultimo_error: c.ultimo_error || "" }))
+        };
+      }
       rawScoped(m, id) {
         const col = this.colOf(m);
         const { level, scope } = this.perm(m);
@@ -3138,7 +3314,7 @@ var require_redes = __commonJS({
         const { j: j2 } = await pedir(f, `${API.fb}/${v(s)}/${pub.id}?${form({ fields: "shares,reactions.summary(total_count).limit(0),comments.summary(total_count).limit(0)", access_token: token.access })}`, {}, "Facebook");
         let alcance = 0;
         try {
-          const { j: ins } = await pedir(f, `${API.fb}/${v(s)}/${pub.id}/insights?${form({ metric: "post_impressions_unique", access_token: token.access })}`, {}, "Facebook");
+          const { j: ins } = await pedir(f, `${API.fb}/${v(s)}/${pub.id}/insights?${form({ metric: "post_total_media_view_unique", access_token: token.access })}`, {}, "Facebook");
           alcance = Number(ins.data && ins.data[0] && ins.data[0].values && ins.data[0].values[0].value) || 0;
         } catch (e) {
         }
@@ -3160,7 +3336,193 @@ var require_redes = __commonJS({
       const m = j.data && j.data.public_metrics || {};
       return sum({ vistas: m.impression_count || 0, alcance: m.impression_count || 0, me_gusta: m.like_count || 0, comentarios: m.reply_count || 0, compartidos: (m.retweet_count || 0) + (m.quote_count || 0), guardados: m.bookmark_count || 0 });
     }
-    module.exports = { REDES, urlAutorizar, canjear, renovar, perfil, publicar, revisar, metricas, verificadorDe, retoDe, API };
+    var numero = (x) => {
+      if (x === null || x === void 0) return null;
+      if (typeof x === "object") return Object.values(x).reduce((a, y) => a + (Number(y) || 0), 0);
+      const n = Number(x);
+      return Number.isFinite(n) ? n : null;
+    };
+    var sumaInt = (o) => ["me_gusta", "comentarios", "compartidos", "guardados"].reduce((a, k) => a + (o[k] || 0), 0);
+    var diaUTC = (dia) => Math.floor(Date.parse(dia + "T00:00:00Z") / 1e3);
+    async function insightsSeguro(f, base, lista, extra, quien) {
+      const leer = (j, out2) => {
+        for (const m of j.data || []) {
+          const tv = m.total_value;
+          let val = tv ? tv.breakdowns ? tv.breakdowns : tv.value : (m.values || []).reduce((a, x) => a + (numero(x.value) || 0), 0);
+          out2[m.name] = val;
+        }
+      };
+      const out = {};
+      try {
+        const { j } = await pedir(f, `${base}?${form({ metric: lista.join(","), ...extra })}`, {}, quien);
+        leer(j, out);
+        return out;
+      } catch (e) {
+        if (e.code === "VENCIDO") throw e;
+      }
+      for (const m of lista) {
+        try {
+          const { j } = await pedir(f, `${base}?${form({ metric: m, ...extra })}`, {}, quien);
+          leer(j, out);
+        } catch (e) {
+          if (e.code === "VENCIDO") throw e;
+        }
+      }
+      return out;
+    }
+    var desglose = (bd) => {
+      const o = {};
+      for (const b of Array.isArray(bd) ? bd : []) for (const r of b.results || []) o[(r.dimension_values || []).join(" \xB7 ") || "\u2014"] = Number(r.value) || 0;
+      return o;
+    };
+    async function diaria(red, s, token, cuenta, dia, f = fetch) {
+      const since = diaUTC(dia), until = since + 86400;
+      if (red === "Instagram") {
+        const base = `${igHost(token)}/${v(s)}/${cuenta.cuenta_ext}/insights`;
+        const m = await insightsSeguro(f, base, ["reach", "views", "accounts_engaged", "total_interactions", "likes", "comments", "shares", "saves", "profile_views", "website_clicks", "profile_links_taps"], { period: "day", metric_type: "total_value", since, until, access_token: token.access }, "Instagram");
+        const fu = await insightsSeguro(f, base, ["follows_and_unfollows"], { period: "day", metric_type: "total_value", breakdown: "follow_type", since, until, access_token: token.access }, "Instagram");
+        const seg = desglose(fu.follows_and_unfollows);
+        const o = {
+          alcance: numero(m.reach),
+          vistas: numero(m.views),
+          cuentas_interactuaron: numero(m.accounts_engaged),
+          me_gusta: numero(m.likes),
+          comentarios: numero(m.comments),
+          compartidos: numero(m.shares),
+          guardados: numero(m.saves),
+          visitas_perfil: numero(m.profile_views),
+          clics_web: numero(m.website_clicks),
+          toques_enlaces: numero(m.profile_links_taps),
+          nuevos_seguidores: seg.FOLLOWER ?? null,
+          dejaron: seg.NON_FOLLOWER ?? null
+        };
+        o.interacciones = numero(m.total_interactions) ?? sumaInt(o);
+        return o;
+      }
+      if (red === "Facebook") {
+        const m = await insightsSeguro(f, `${API.fb}/${v(s)}/${cuenta.cuenta_ext}/insights`, ["page_total_media_view_unique", "page_media_view", "page_post_engagements", "page_daily_follows_unique", "page_daily_unfollows_unique"], { period: "day", since, until, access_token: token.access }, "Facebook");
+        return { alcance: numero(m.page_total_media_view_unique), vistas: numero(m.page_media_view), interacciones: numero(m.page_post_engagements), nuevos_seguidores: numero(m.page_daily_follows_unique), dejaron: numero(m.page_daily_unfollows_unique) };
+      }
+      return null;
+    }
+    async function audiencia(red, s, token, cuenta, f = fetch) {
+      if (red !== "Instagram") return null;
+      const base = `${igHost(token)}/${v(s)}/${cuenta.cuenta_ext}/insights`;
+      const out = {};
+      for (const [k, b] of [["edad", "age"], ["genero", "gender"], ["pais", "country"], ["ciudad", "city"]]) {
+        try {
+          const m = await insightsSeguro(f, base, ["follower_demographics"], { period: "lifetime", metric_type: "total_value", timeframe: "this_month", breakdown: b, access_token: token.access }, "Instagram");
+          const d = desglose(m.follower_demographics);
+          if (Object.keys(d).length) out[k] = d;
+        } catch (e) {
+          if (e.code === "VENCIDO") throw e;
+        }
+      }
+      return Object.keys(out).length ? out : null;
+    }
+    async function contenido(red, s, token, cuenta, f = fetch, { desde = Date.now() - 30 * 864e5, max = 40 } = {}) {
+      const out = [];
+      const corto = (t) => String(t || "").slice(0, 280);
+      if (red === "Instagram") {
+        let url = `${igHost(token)}/${v(s)}/${cuenta.cuenta_ext}/media?${form({ fields: "id,caption,media_type,media_product_type,timestamp,permalink,thumbnail_url,media_url,like_count,comments_count", limit: 50, access_token: token.access })}`;
+        while (url && out.length < max) {
+          const { j } = await pedir(f, url, {}, "Instagram");
+          let viejo = false;
+          for (const x of j.data || []) {
+            if (Date.parse(x.timestamp) < desde) {
+              viejo = true;
+              break;
+            }
+            if (out.length >= max) break;
+            const tipo = x.media_product_type === "REELS" ? "Reel" : x.media_type === "CAROUSEL_ALBUM" ? "Carrusel" : x.media_type === "VIDEO" ? "Video" : "Foto";
+            const m = await insightsSeguro(f, `${igHost(token)}/${v(s)}/${x.id}/insights`, ["reach", "views", "likes", "comments", "shares", "saved", "total_interactions"], { access_token: token.access }, "Instagram");
+            const o = {
+              post_id: String(x.id),
+              fecha: x.timestamp,
+              tipo,
+              texto: corto(x.caption),
+              enlace: x.permalink || "",
+              imagen: x.thumbnail_url || (x.media_type !== "VIDEO" ? x.media_url : "") || "",
+              alcance: numero(m.reach),
+              vistas: numero(m.views),
+              me_gusta: numero(m.likes) ?? numero(x.like_count),
+              comentarios: numero(m.comments) ?? numero(x.comments_count),
+              compartidos: numero(m.shares),
+              guardados: numero(m.saved)
+            };
+            o.interacciones = numero(m.total_interactions) ?? sumaInt(o);
+            out.push(o);
+          }
+          url = !viejo && j.paging && j.paging.next ? j.paging.next : null;
+        }
+        return out;
+      }
+      if (red === "Facebook") {
+        const { j } = await pedir(f, `${API.fb}/${v(s)}/${cuenta.cuenta_ext}/published_posts?${form({ fields: "id,message,created_time,permalink_url,full_picture,status_type,shares,reactions.summary(total_count).limit(0),comments.summary(total_count).limit(0)", since: Math.floor(desde / 1e3), limit: Math.min(max, 50), access_token: token.access })}`, {}, "Facebook");
+        for (const x of (j.data || []).slice(0, max)) {
+          const m = await insightsSeguro(f, `${API.fb}/${v(s)}/${x.id}/insights`, ["post_total_media_view_unique", "post_media_view"], { access_token: token.access }, "Facebook");
+          const o = {
+            post_id: String(x.id),
+            fecha: x.created_time,
+            tipo: /video/.test(x.status_type || "") ? "Video" : x.full_picture ? "Foto" : "Texto",
+            texto: corto(x.message),
+            enlace: x.permalink_url || "",
+            imagen: x.full_picture || "",
+            alcance: numero(m.post_total_media_view_unique),
+            vistas: numero(m.post_media_view),
+            me_gusta: Number(x.reactions && x.reactions.summary && x.reactions.summary.total_count) || 0,
+            comentarios: Number(x.comments && x.comments.summary && x.comments.summary.total_count) || 0,
+            compartidos: Number(x.shares && x.shares.count) || 0,
+            guardados: null
+          };
+          o.interacciones = sumaInt(o);
+          out.push(o);
+        }
+        return out;
+      }
+      if (red === "TikTok") {
+        let cursor = null;
+        let mas = true;
+        while (mas && out.length < max) {
+          const { j } = await pedir(f, `${API.tt}/v2/video/list/?fields=id,create_time,title,video_description,share_url,cover_image_url,view_count,like_count,comment_count,share_count`, { method: "POST", headers: { Authorization: `Bearer ${token.access}`, "Content-Type": "application/json" }, body: JSON.stringify(cursor ? { max_count: 20, cursor } : { max_count: 20 }) }, "TikTok");
+          const d = j.data || {};
+          let viejo = false;
+          for (const x of d.videos || []) {
+            const fecha = new Date((Number(x.create_time) || 0) * 1e3).toISOString();
+            if (Date.parse(fecha) < desde) {
+              viejo = true;
+              break;
+            }
+            if (out.length >= max) break;
+            const o = { post_id: String(x.id), fecha, tipo: "Video", texto: corto(x.video_description || x.title), enlace: x.share_url || "", imagen: x.cover_image_url || "", alcance: null, vistas: Number(x.view_count) || 0, me_gusta: Number(x.like_count) || 0, comentarios: Number(x.comment_count) || 0, compartidos: Number(x.share_count) || 0, guardados: null };
+            o.interacciones = sumaInt(o);
+            out.push(o);
+          }
+          mas = !viejo && d.has_more && d.cursor;
+          cursor = d.cursor;
+        }
+        return out;
+      }
+      if (red === "YouTube") {
+        const auth = { headers: { Authorization: `Bearer ${token.access}` } };
+        const { j: ch } = await pedir(f, `${API.yt}/youtube/v3/channels?part=contentDetails&mine=true`, auth, "YouTube");
+        const lista = (((ch.items || [])[0] || {}).contentDetails || {}).relatedPlaylists;
+        if (!lista || !lista.uploads) return out;
+        const { j: pl } = await pedir(f, `${API.yt}/youtube/v3/playlistItems?part=contentDetails&maxResults=${Math.min(max, 50)}&playlistId=${encodeURIComponent(lista.uploads)}`, auth, "YouTube");
+        const ids = (pl.items || []).filter((x) => Date.parse(x.contentDetails.videoPublishedAt || 0) >= desde).map((x) => x.contentDetails.videoId);
+        if (!ids.length) return out;
+        const { j } = await pedir(f, `${API.yt}/youtube/v3/videos?part=snippet,statistics&id=${ids.join(",")}`, auth, "YouTube");
+        for (const x of j.items || []) {
+          const st = x.statistics || {};
+          const o = { post_id: x.id, fecha: x.snippet.publishedAt, tipo: "Video", texto: corto(x.snippet.title), enlace: `https://www.youtube.com/watch?v=${x.id}`, imagen: ((x.snippet.thumbnails || {}).medium || {}).url || "", alcance: null, vistas: Number(st.viewCount) || 0, me_gusta: Number(st.likeCount) || 0, comentarios: Number(st.commentCount) || 0, compartidos: null, guardados: null };
+          o.interacciones = sumaInt(o);
+          out.push(o);
+        }
+        return out;
+      }
+      return out;
+    }
+    module.exports = { REDES, urlAutorizar, canjear, renovar, perfil, publicar, revisar, metricas, diaria, audiencia, contenido, verificadorDe, retoDe, API };
   }
 });
 
@@ -3198,9 +3560,10 @@ var require_servidor = __commonJS({
       "settings",
       "exportData",
       "reportarError",
-      "reporteCliente"
+      "reporteCliente",
+      "metricasRedes"
     ];
-    var SOLO_LECTURA = /* @__PURE__ */ new Set(["reporteCliente", "metricasJuego", "hasUsers", "demoAccounts", "me", "meta", "list", "get", "directory", "options", "dashboard", "calendar", "report", "search", "auditList", "settings", "ping", "urlArchivo", "exportData"]);
+    var SOLO_LECTURA = /* @__PURE__ */ new Set(["metricasRedes", "reporteCliente", "metricasJuego", "hasUsers", "demoAccounts", "me", "meta", "list", "get", "directory", "options", "dashboard", "calendar", "report", "search", "auditList", "settings", "ping", "urlArchivo", "exportData"]);
     var META_KEYS = ["settings", "counters", "meta"];
     var TOPICO = "delirium-os";
     function crearServidor2({ url, clave: clave2, secreto, fetchImpl = fetch }) {
@@ -3452,24 +3815,67 @@ var require_servidor = __commonJS({
             res.errores.push(`${post.titulo} \xB7 ${red}: ${e.message}`);
           }
         }
-        const ultima = Date.parse(s.redes_ultima_sync || 0) || 0;
-        if (metricas || Date.now() - ultima > 6 * 3600 * 1e3) {
+        const inicio = Date.now();
+        const presupuesto = metricas ? 11e4 : 8e4;
+        const hoy = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+        const toca = (c) => metricas || !c.metricas_al || Date.now() - Date.parse(c.metricas_al) > 6 * 3600 * 1e3 || c.metricas_pendiente;
+        for (const cuenta of db.socials.filter((x) => x.estado === "Conectada" && x.cuenta_ext && toca(x))) {
+          if (Date.now() - inicio > presupuesto) break;
+          try {
+            const t = await tokenListo(db, cuenta);
+            const p = await R.perfil(cuenta.red, s, t, fetchImpl, cuenta.cuenta_ext);
+            core.redesSeguidores(cuenta, p.seguidores);
+            if (p.publicaciones_total !== void 0) cuenta.publicaciones_total = p.publicaciones_total;
+            core.redesGuardarDia(cuenta, hoy, { seguidores: p.seguidores });
+            let pendiente = false;
+            let aviso = "";
+            for (let i = 30; i >= 1; i--) {
+              const dia = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
+              if (i > 2 && core.redesDiaGuardado(cuenta, dia)) continue;
+              if (Date.now() - inicio > presupuesto) {
+                pendiente = true;
+                break;
+              }
+              let m;
+              try {
+                m = await R.diaria(cuenta.red, s, t, cuenta, dia, fetchImpl);
+              } catch (e) {
+                if (e.code === "VENCIDO") throw e;
+                aviso = e.message;
+                break;
+              }
+              if (!m) break;
+              core.redesGuardarDia(cuenta, dia, m);
+            }
+            if (!pendiente && Date.now() - inicio < presupuesto) {
+              const desde = Date.now() - (cuenta.metricas_al ? 35 : 90) * 864e5;
+              try {
+                core.redesGuardarContenido(cuenta, await R.contenido(cuenta.red, s, t, cuenta, fetchImpl, { desde, max: cuenta.metricas_al ? 40 : 60 }));
+              } catch (e) {
+                if (e.code === "VENCIDO") throw e;
+                aviso = e.message;
+              }
+              try {
+                if (!cuenta.audiencia || Date.now() - Date.parse(cuenta.audiencia.fecha || 0) > 24 * 3600 * 1e3) core.redesAudiencia(cuenta, await R.audiencia(cuenta.red, s, t, cuenta, fetchImpl));
+              } catch (e) {
+                if (e.code === "VENCIDO") throw e;
+              }
+            } else pendiente = true;
+            cuenta.metricas_pendiente = pendiente;
+            if (!pendiente) cuenta.metricas_al = (/* @__PURE__ */ new Date()).toISOString();
+            cuenta.ultimo_error = aviso ? `M\xE9tricas: ${aviso}`.slice(0, 300) : "";
+            res.cuentas++;
+          } catch (e) {
+            core.redesFallo(cuenta.id, e);
+            cuenta.metricas_al = (/* @__PURE__ */ new Date()).toISOString();
+            res.errores.push(`${cuenta.red} ${cuenta.nombre}: ${e.message}`);
+          }
+        }
+        if (metricas || Date.now() - (Date.parse(s.redes_ultima_sync || 0) || 0) > 6 * 3600 * 1e3) {
           s.redes_ultima_sync = (/* @__PURE__ */ new Date()).toISOString();
           const hace30 = Date.now() - 30 * 864e5;
-          for (const cuenta of db.socials.filter((x) => x.estado === "Conectada")) {
-            try {
-              const t = await tokenListo(db, cuenta);
-              const p = await R.perfil(cuenta.red, s, t, fetchImpl, cuenta.cuenta_ext);
-              core.redesSeguidores(cuenta, p.seguidores);
-              if (p.publicaciones_total !== void 0) cuenta.publicaciones_total = p.publicaciones_total;
-              cuenta.ultimo_error = "";
-              res.cuentas++;
-            } catch (e) {
-              core.redesFallo(cuenta.id, e);
-              res.errores.push(`${cuenta.red} ${cuenta.nombre}: ${e.message}`);
-            }
-          }
-          for (const post of db.posts.filter((x) => Date.parse(x.publicado_el || x.fecha || 0) > hace30)) for (const pub of (post.publicaciones || []).filter((x) => x.estado === "Publicado" && x.id)) {
+          for (const post of db.posts.filter((x) => Date.parse(x.publicado_el || x.fecha || 0) > hace30)) for (const pub of (post.publicaciones || []).filter((x) => x.estado === "Publicado" && x.id && !(x.metricas && Date.now() - Date.parse(x.metricas.fecha || 0) < 3600 * 1e3))) {
+            if (Date.now() - inicio > presupuesto) break;
             const cuenta = db.socials.find((x) => x.id === pub.cuenta_id && x.estado === "Conectada");
             if (!cuenta) continue;
             try {

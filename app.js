@@ -2,7 +2,7 @@
 (function (D) {
   const esc = D.esc;
   const root = document.getElementById('root');
-  const CUSTOM = ['inicio', 'calendario', 'reportes', 'mapa', 'actividad', 'ajustes'];
+  const CUSTOM = ['inicio', 'calendario', 'reportes', 'metricas', 'mapa', 'actividad', 'ajustes'];
   D.isAdmin = () => !!(D.me && D.meta && D.meta.roles[D.me.rol] && D.meta.roles[D.me.rol].admin);
   D.canRead = (k) => !!(D.meta && D.meta.modules.some(m => m.key === k));
   const setTheme = (t) => document.documentElement.dataset.theme = t === 'claro' ? 'claro' : 'oscuro';
