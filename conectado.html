@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conexión de redes · Delirium Studios</title>
+<meta name="theme-color" content="#0b0b0d">
+<style>
+  :root { --bg: #0b0b0d; --s: #141418; --b: #2d2d37; --t: #f4f4f6; --m: #a2a2b0; --v: #7d39eb; --vt: #bf9bff; --l: #c6ff33; }
+  * { box-sizing: border-box; } body { margin: 0; background: var(--bg); color: var(--t); font: 16px/1.65 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+  header { border-bottom: 1px solid var(--b); padding: 16px 22px; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+  header a { color: var(--t); text-decoration: none; font-weight: 800; font-size: 18px; } header span { color: var(--l); font: 12px ui-monospace, monospace; letter-spacing: .14em; }
+  main { max-width: 760px; margin: 0 auto; padding: 34px 22px 70px; }
+  h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.15; margin: 0 0 6px; letter-spacing: -.02em; } h2 { font-size: 20px; margin: 30px 0 8px; } .fecha { color: var(--m); margin: 0 0 26px; }
+  p, li { color: #dcdce3; } a { color: var(--vt); } ul { padding-left: 20px; } .caja { background: var(--s); border: 1px solid var(--b); border-radius: 14px; padding: 18px 20px; margin: 18px 0; }
+  .en { border-top: 1px solid var(--b); margin-top: 40px; padding-top: 10px; color: var(--m); } .en p, .en li { color: var(--m); font-size: 15px; }
+  footer { text-align: center; color: var(--m); font: 12px ui-monospace, monospace; letter-spacing: .12em; padding: 26px; border-top: 1px solid var(--b); }
+  footer a { color: var(--m); margin: 0 8px; }
+</style>
+</head>
+<body>
+<header><a href="./">Delirium Studios</a><span>STAY DELIRIOUS</span></header>
+<main>
+<div id="r"><h1>Conectando…</h1></div>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search), r = document.getElementById('r');
+  var esc = function (s) { return String(s || '').replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  if (q.get('ok')) {
+    r.innerHTML = '<h1 style="color:#c6ff33">¡Listo! ' + esc(q.get('red')) + ' quedó conectado</h1>'
+      + (q.get('paginas') ? '<p>Autorizaste ' + esc(q.get('paginas')) + ' páginas. El equipo de Delirium Studios elegirá la tuya en Delirium OS.</p>' : '<p>Cuenta: <b>' + esc(q.get('nombre')) + '</b>.</p>')
+      + '<p>Ya puedes cerrar esta ventana. Solo publicaremos lo que apruebes en tu portal.</p>';
+  } else {
+    r.innerHTML = '<h1>No se pudo conectar' + (q.get('red') ? ' ' + esc(q.get('red')) : '') + '</h1><div class="caja">' + esc(q.get('error') || 'Algo salió mal.') + '</div><p>Vuelve a abrir el enlace de conexión o escríbenos a <a href="mailto:deriliumsanctum@gmail.com">deriliumsanctum@gmail.com</a>.</p>';
+  }
+})();
+</script>
+
+</main>
+<footer><a href="privacidad.html">Privacidad</a>·<a href="terminos.html">Términos</a>·<a href="eliminar-datos.html">Eliminar mis datos</a></footer>
+</body>
+</html>

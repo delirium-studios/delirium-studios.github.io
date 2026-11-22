@@ -1,0 +1,9 @@
+Delirium OS 1.4.0 — web para GitHub Pages
+
+Sube TODO el contenido de esta carpeta a un repositorio público de GitHub y activa Settings → Pages (rama main, carpeta raíz).
+
+  tienda/  → tienda de merch pública
+  app/     → Delirium OS en el navegador y el celular (entra con tu usuario)
+
+Esta carpeta solo contiene la dirección de la nube y la clave publicable: no da acceso a ningún dato sin usuario y contraseña.
+Vuelve a generarla cuando actualices Delirium OS.
