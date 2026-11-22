@@ -82,7 +82,7 @@
       col.ondrop = async (e) => {
         e.preventDefault(); col.classList.remove('over'); if (!dragId) return;
         const id = dragId; dragId = null; const v = col.dataset.v;
-        if (await D.try(() => D.call('save', key, { id, [sc.board.key]: v }), `Movido a "${v}".`)) { D.updateBadges(); rerender(); }
+        if (await D.try(() => (D.guardar ? D.guardar(key, { id, [sc.board.key]: v }) : D.call('save', key, { id, [sc.board.key]: v })), `Movido a "${v}".`)) { D.updateBadges(); rerender(); }
         else rerender();
       };
     });
@@ -100,7 +100,7 @@
     switch (f.type) {
       case 'money': return D.money(v); case 'pct': return Number(v) ? `${v}%` : null; case 'date': return `${D.date(v)} <span class="muted small">(${D.rel(v)})</span>`; case 'datetime': return D.datetime(v);
       case 'checkbox': return v ? 'Sí' : 'No'; case 'users': return esc((r['_' + f.key] || []).join(', '));
-      case 'multi': return Array.isArray(v) ? v.map(x => `<span class="badge">${esc(x)}</span>`).join(' ') : esc(v);
+      case 'multi': { const op = typeof f.options === 'function' ? f.options() : (f.options || []); const lab = (x) => { const o = op.find(o => (o && o.value !== undefined ? o.value : o) === x); return o && o.label ? o.label : x; }; return Array.isArray(v) ? v.map(x => `<span class="badge">${esc(lab(x))}</span>`).join(' ') : esc(v); }
       case 'file': return D.fileChip(v) || null;
       case 'textarea': return `<div style="white-space:pre-wrap">${esc(v)}</div>`;
       case 'select': {
@@ -108,6 +108,7 @@
         if (f.key === 'product_id') return esc(r._producto); if (['pm','asignado','usuario_id','responsable'].includes(f.key)) return esc(r['_' + f.key]);
         if (f.key === 'game_id') return esc(r._juego); if (f.key === 'piece_id') return esc(r._pieza);
         if (f.key === 'rol') return esc(D.meta.roles[v]?.label || v);
+        if (typeof f.options === 'function') { const o = (f.options() || []).find(o => o && o.value === v); if (o && o.label) return esc(o.label); }
         return D.tone(v) ? D.badge(v) : esc(v);
       }
       default: return /^https?:\/\//.test(String(v)) ? `<a href="#" data-ext="${esc(v)}">${esc(v)}</a>` : esc(v);
@@ -158,7 +159,7 @@
       if (!isNew) vals.id = rec.id;
       if (key === 'equipo' && !isNew) delete vals.password;
       const btn = root.querySelector('[data-save]'); btn.disabled = true;
-      const out = await D.try(() => D.call('save', key, vals), isNew ? `${sc.singular[0].toUpperCase() + sc.singular.slice(1)} ${/a$|ión$/.test(sc.singular) && sc.singular !== 'tema' ? 'guardada' : 'guardado'}.` : 'Cambios guardados.');
+      const out = await D.try(() => (D.guardar ? D.guardar(key, vals) : D.call('save', key, vals)), isNew ? `${sc.singular[0].toUpperCase() + sc.singular.slice(1)} ${/a$|ión$/.test(sc.singular) && sc.singular !== 'tema' ? 'guardada' : 'guardado'}.` : 'Cambios guardados.');
       btn.disabled = false;
       if (out) { D.closeAll(); await D.refreshRefs(); if (key === 'equipo') D.directory = await D.call('directory'); D.rerender(); D.updateBadges(); if (D.AFTER_SAVE[key]) D.AFTER_SAVE[key](out, isNew); else D.openRecord(key, out.id); }
     };
@@ -175,10 +176,9 @@
   const isClient = () => ['cliente', 'cliente_eq'].includes(D.me.rol);
 
   D.DETAIL = {
-    clientes: (r) => ({ top: `<div class="note" style="margin-bottom:16px">${D.badge(r.estado)} &nbsp;${r.ultimo_contacto ? `Último contacto: <b>${D.date(r.ultimo_contacto)}</b> (${D.rel(r.ultimo_contacto)})` : 'Todavía no hay contactos registrados.'}</div>`,
+    clientes: (r) => ({ top: `<div class="note" style="margin-bottom:16px">${D.badge(r.estado)} &nbsp;${r.ultimo_contacto ? `Último contacto: <b>${D.date(r.ultimo_contacto)}</b> (${D.rel(r.ultimo_contacto)})` : 'Todavía no hay contactos registrados.'}</div><div data-ficha360><p class="muted small">Cargando todo lo de este cliente…</p></div>`,
       bottom: `<div class="section"><h3>Historial ${canW('clientes') ? `<button class="btn sm" data-act="hist">${D.icon('plus')} Anotar contacto</button>` : ''}</h3>
         ${(r.historial || []).length ? `<div class="timeline">${r.historial.map(h => `<div class="ev"><b>${esc(h.tipo)}</b> — ${esc(h.nota)}<span>${D.datetime(h.fecha)} · ${esc(h.por)}</span></div>`).join('')}</div>` : '<p class="muted">Sin llamadas, mensajes ni reuniones anotadas.</p>'}</div>
-        <div class="section"><h3>Proyectos</h3>${(D.refs.proyectos || []).filter(p => p.client_id === r.id).map(p => `<div><a href="#" data-open="proyectos:${p.id}">${esc(p.nombre)}</a></div>`).join('') || '<p class="muted">Sin proyectos.</p>'}</div>
         <div class="section"><h3>Kit de marca</h3>${r.marca_colores || r.marca_tipografias || r.marca_logos || r.marca_tono || r.link_bio ? `<dl class="kv">
           ${r.marca_colores ? `<dt>Colores</dt><dd>${esc(r.marca_colores)}<div class="swatches">${(r.marca_colores.match(/#[0-9a-fA-F]{6}\b/g) || []).map(c => `<i style="background:${c}" title="${c}"></i>`).join('')}</div></dd>` : ''}
           ${r.marca_tipografias ? `<dt>Tipografías</dt><dd>${esc(r.marca_tipografias)}</dd>` : ''}${r.marca_logos ? `<dt>Logos y archivos</dt><dd>${/^https?:/.test(r.marca_logos) ? `<a href="#" data-ext="${esc(r.marca_logos)}">${esc(r.marca_logos)}</a>` : esc(r.marca_logos)}</dd>` : ''}
@@ -403,7 +403,7 @@
   const greet = () => { const h = new Date().getHours(); return h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches'; };
   const firstName = () => D.me.nombre.replace(/\(.*?\)/g, '').trim().split(' ')[0];
   D.views.inicio = async (el) => {
-    const d = await D.try(() => D.call('dashboard')); if (!d) return;
+    const d = await D.try(() => D.call('dashboard')); if (!d) return; D._dash = d;
     if (d.cliente) return clientHome(el, d);
     const today = new Date(); const fecha = `${today.getDate()} de ${D.MESES_LARGOS[today.getMonth()]} de ${today.getFullYear()}`;
     const kpis = [];
@@ -430,6 +430,10 @@
     for (const a of d.alquileres_devolver || []) alerts.push({ k: '', t: `Alquiler por terminar: ${a.nombre}`, s: `${a._cliente} · ${D.date(a.fin)}`, open: `planes:${a.id}` });
     if ((d.posts_hoy || []).length) alerts.push({ k: 'info', t: D.pl(d.posts_hoy.length, 'publicación sale hoy', 'publicaciones salen hoy'), s: d.posts_hoy.map(p => p.titulo).slice(0, 2).join(' · '), go: 'redes' });
     if (d.pedidos_pendientes) alerts.push({ k: '', t: D.pl(d.pedidos_pendientes, 'pedido de merch por despachar', 'pedidos de merch por despachar'), s: 'Nuevos o pagados sin entregar.', go: 'pedidos' });
+    if (d.bandeja_nuevos) alerts.push({ k: 'info', t: D.pl(d.bandeja_nuevos, 'comentario o mensaje sin responder', 'comentarios y mensajes sin responder'), s: 'Instagram y Facebook de tus clientes.', go: 'bandeja' });
+    for (const g of (d.metas_atrasadas || []).slice(0, 4)) alerts.push({ k: '', t: `Meta atrasada: ${g.titulo}`, s: `${g._cliente} · ${g._avance}% hecho con ${g._esperado}% del tiempo (cierra ${D.date(g.hasta)})`, open: `metas:${g.id}` });
+    if (d.carga && d.carga.saturados.length) alerts.push({ k: 'danger', t: `${D.pl(d.carga.saturados.length, 'persona saturada', 'personas saturadas')} en las próximas 2 semanas`, s: d.carga.saturados.map(x => `${x.nombre.replace(' (ejemplo)', '')} ${x.pct}%`).slice(0, 3).join(' · ') + (d.carga.libres ? ` · ${D.pl(d.carga.libres, 'persona libre', 'personas libres')} para reasignar` : ''), go: 'carga' });
+    if (d.reportes_mes) alerts.push({ k: 'info', t: 'Inicio de mes: reportes para clientes', s: 'Genera los PDF del mes pasado de todos tus clientes en un paso.', go: 'informes' });
     if (d.candidatos_nuevos) alerts.push({ k: 'info', t: D.pl(d.candidatos_nuevos, 'candidato nuevo', 'candidatos nuevos'), s: 'Revisa su portafolio.', go: 'candidatos' });
     const pp = d.primeros_pasos; let ppHide = false; try { ppHide = localStorage.getItem('primeros-pasos') === 'oculto'; } catch (e) {}
     const ppItems = pp ? [['ajustes', 'Completa los datos del estudio', 'ajustes', 'Salen en cotizaciones y facturas.'], ['catalogo', 'Agrega tus servicios con precio', 'catalogo', 'Para cotizar en segundos.'], ['equipo', 'Crea las cuentas de tu equipo', 'equipo', 'Cada rol ve solo lo suyo.'], ['clientes', 'Agrega tu primer cliente', 'clientes', 'O tus prospectos por contactar.'], ['proyectos', 'Crea tu primer proyecto', 'proyectos', 'Con equipo, fechas y rondas.']] : [];
@@ -442,7 +446,7 @@
         <div class="card"><h2>Mis tareas ${canW('tareas') ? `<button class="btn sm" data-new="tareas">${D.icon('plus')} Nueva</button>` : ''}</h2>
           ${d.mis_tareas.length ? `<div class="list">${d.mis_tareas.slice(0, 8).map(t => `<div class="item" data-open="tareas:${t.id}"><div class="t"><b>${esc(t.titulo)}</b><span>${esc(t._proyecto || 'Sin proyecto')} · ${t.vence ? `vence ${D.rel(t.vence)}` : 'sin fecha'}</span></div>${D.badge(t.prioridad)}</div>`).join('')}</div>` : D.empty('¡Nada pendiente!', 'No tienes tareas abiertas. Spiro está orgulloso.')}</div>
         <div class="grid">
-          <div class="card"><h2>Alertas${alerts.length > 8 ? ` <span class="muted small" style="font-weight:500">${alerts.length}</span>` : ''}</h2>${alerts.length ? alerts.slice(0, 8).map(a => `<div class="alert-row ${a.k}" ${a.go ? `data-go="${a.go}"` : `data-open="${a.open}"`} tabindex="0" role="button"><div>${D.icon('alert')}</div><div><b>${esc(a.t)}</b><span class="small">${esc(a.s)}</span></div></div>`).join('') : '<p class="muted" style="margin:0">Todo en orden. Sin alertas.</p>'}</div>
+          <div class="card"><h2>Alertas${alerts.length > 8 ? ` <span class="muted small" style="font-weight:500">${alerts.length}</span>` : ''}</h2>${alerts.length ? alerts.map((a, i) => `<div class="alert-row ${a.k} ${i >= 8 ? 'hidden' : ''}" ${i >= 8 ? 'data-alert-mas' : ''} ${a.go ? `data-go="${a.go}"` : `data-open="${a.open}"`} tabindex="0" role="button"><div>${D.icon('alert')}</div><div><b>${esc(a.t)}</b><span class="small">${esc(a.s)}</span></div></div>`).join('') + (alerts.length > 8 ? `<button class="btn sm ghost" data-ver-alertas style="margin-top:6px">Ver ${alerts.length - 8} alertas más</button>` : '') : '<p class="muted" style="margin:0">Todo en orden. Sin alertas.</p>'}</div>
           <div class="card"><h2>Recordatorios de hoy ${canW('recordatorios') ? `<button class="btn sm" data-new="recordatorios">${D.icon('plus')} Nuevo</button>` : ''}</h2>${d.recordatorios_hoy.length ? `<div class="list">${d.recordatorios_hoy.map(r => `<div class="item" data-open="recordatorios:${r.id}"><div class="t"><b>${esc(r.titulo)}</b><span>${D.datetime(r.fecha)}${r._cliente ? ' · ' + esc(r._cliente) : ''}</span></div></div>`).join('')}</div>` : '<p class="muted" style="margin:0">No tienes recordatorios para hoy.</p>'}</div>
         </div></div>
       ${d.entregas_semana.length ? `<div class="card" style="margin-top:16px"><h2>Entregas de los próximos 7 días</h2><div class="list">${d.entregas_semana.map(x => `<div class="item" data-open="${x.codigo ? 'proyectos' : 'tareas'}:${x.id}"><div class="t"><b>${esc(x.nombre || x.titulo)}</b><span>${x.codigo ? 'Entrega de proyecto' : 'Tarea'} · ${D.date(x.entrega || x.vence)} (${D.rel(x.entrega || x.vence)})</span></div>${D.badge(x.estado)}</div>`).join('')}</div></div>` : ''}</div>`;
@@ -451,6 +455,7 @@
   };
   const bindHome = (el) => {
     el.querySelectorAll('[data-go]').forEach(k => { k.onclick = () => D.go(k.dataset.go); k.onkeydown = (e) => { if (e.key === 'Enter') D.go(k.dataset.go); }; });
+    const va = el.querySelector('[data-ver-alertas]'); if (va) va.onclick = () => { el.querySelectorAll('[data-alert-mas]').forEach(x => x.classList.remove('hidden')); va.remove(); };
     el.querySelectorAll('[data-open]').forEach(a => { a.onclick = () => { const [m, i] = a.dataset.open.split(':'); D.openRecord(m, i); }; a.onkeydown = (e) => { if (e.key === 'Enter') a.click(); }; });
     D.bindPage(el);
   };
@@ -562,11 +567,62 @@
       ['App en el celular y el navegador', 'Delirium OS en el teléfono o cualquier PC, instalable en la pantalla de inicio', 'Apps móviles de Zoho y HubSpot'],
       ['Copia diaria de la nube', 'La PC de Dirección guarda cada día una copia de todo lo que hay en Supabase', 'Respaldos de pago de Supabase'],
     ] },
-    { area: 'Siguiente etapa', estado: 'Planeado', tone: 'warn', items: [
-      ['Correos automáticos', 'Invitaciones, recuperar contraseña y avisos por correo desde @staydelirious.com', 'Zoho Mail, Campaigns (necesita el dominio)'],
-      ['Publicar en redes', 'Programar y publicar en Instagram, TikTok y Facebook', 'Zoho Social, Metricool'],
-      ['TikTok y Google Ads', 'Traer gasto y resultados como con Meta', 'TikTok Ads Manager, Google Ads'],
-      ['WhatsApp y chat web', 'Atención y ventas desde el chat, con bot', 'Zoho SalesIQ, WATI'],
+    { area: 'Nuevo en la 1.4', estado: 'Activo', tone: 'ok', items: [
+      ['Publicar en redes', 'Instagram, Facebook y TikTok publican solos a la hora programada, con reintentos y aviso si algo falla', 'Zoho Social, Metricool, Planable'],
+      ['Métricas de redes', 'Alcance, vistas, interacciones, engagement, seguidores, audiencia y mejores publicaciones de la cuenta completa de cada cliente, cada 6 horas', 'Metricool, Zoho Social (reportes), AgencyAnalytics'],
+      ['Vista completa del cliente', 'En la ficha del cliente: sus servicios, planes, redes y métricas, proyectos, calendario, anuncios, piezas, cobros, contratos y solicitudes', 'Zoho CRM (vista 360), HubSpot'],
+      ['Servicios por cliente', 'Cada cliente marca los servicios del catálogo que tiene; el catálogo muestra quién tiene cada uno', 'Zoho CRM (productos por cuenta)'],
+    ] },
+    { area: 'Nuevo en la 1.5', estado: 'Activo', tone: 'ok', items: [
+      ['Recorrido de bienvenida', 'La primera vez que alguien entra, un recorrido le muestra dónde está cada cosa según su rol', 'Capacitaciones en persona, WalkMe'],
+      ['Guía y tutoriales', 'Qué hace cada sección, cómo se usa y videos cortos grabados del programa; botón ? en cada pantalla', 'Zoho Learn, Loom'],
+    ] },
+    { area: 'Nuevo en la 1.6', estado: 'Activo', tone: 'ok', items: [
+      ['Reportes para clientes', 'PDF de resultados con todo lo del cliente, por período, con vista previa y todos los clientes de una vez', 'Metricool, Agency Analytics, Looker Studio'],
+      ['Metas por cliente', 'Objetivos en redes con avance, ritmo y proyección calculados solos', 'Hojas de cálculo, Notion'],
+      ['Mejor hora para publicar', 'Mapa de día y hora según cómo rindieron las publicaciones y cuándo están conectados los seguidores', 'Metricool, Later'],
+      ['Bandeja de redes', 'Comentarios y mensajes de Instagram y Facebook de todos los clientes en un lugar, con respuesta directa', 'Meta Business Suite, Hootsuite Inbox'],
+      ['Carga del equipo', 'Horas de trabajo de cada persona frente a su capacidad, con ausencias', 'Float, Resource Guru'],
+      ['Varias monedas', 'Equivalentes en bolívares, euros, pesos, USDT y las que agregues, con tasas del día', 'Calculadoras de cambio'],
+      ['Verificación en dos pasos', 'Código del teléfono al entrar, con códigos de respaldo; Dirección puede exigirla', 'Google Authenticator'],
+    ] },
+    { area: 'Nuevo en la 1.7', estado: 'Activo', tone: 'ok', items: [
+      ['Hoy · prospección', 'Mensajes del día con meta diaria, plantillas para copiar, seguimientos a 3 y 7 días automáticos y embudo semanal', 'HubSpot Sales, Pipedrive'],
+      ['Importar prospectos', 'CSV o Excel con mapeo de columnas, vista previa y duplicados por Instagram, teléfono, correo o nombre + ciudad', 'Importadores de CRM'],
+      ['Bandeja de TikTok', 'Comentarios de TikTok junto a Instagram y Facebook, con respuesta y ocultar; alerta de comentarios negativos', 'Hootsuite Inbox, Sprout Social'],
+      ['Horarios flexibles', 'Cada persona arma su horario de lunes a viernes en hora de Venezuela; quién trabaja ahora', 'Deputy, Homebase'],
+      ['Invitaciones sin correo', 'Enlace de un solo uso para mandar por WhatsApp y restablecer contraseñas', 'Correos de invitación'],
+      ['Plan gratis bajo control', 'Medidor de base de datos, archivos y tráfico, respaldo diario en la nube y anti-pausa', 'Panel de Supabase'],
+      ['Reportar problema', 'Botón en cada pantalla que manda a Discord la pantalla, la versión y una captura sin datos privados', 'Sentry, Jam'],
+      ['Competencia', 'Seguidores, interacciones y frecuencia de los competidores de cada cliente en Instagram', 'Metricool, Not Just Analytics'],
+    ] },
+    { area: 'Nuevo en la 1.8', estado: 'Activo', tone: 'ok', items: [
+      ['Cobros internacionales', 'USD por defecto fuera de Venezuela; PayPal, Payoneer, Zelle, Binance y Pago Móvil con datos e instrucciones en la factura y el portal', 'PayPal Invoicing, Wave'],
+      ['Sin pago, no se empieza', 'Un proyecto no pasa a "En curso" sin el adelanto verificado; solo el CEO puede saltarlo y queda registrado', 'Reglas manuales'],
+      ['Prueba → plan mensual', 'Proyecto Prueba de 7 días; el día 5 avisa y genera la cotización del plan con la opción de 3 meses -10%', 'Plantillas de cotización'],
+      ['Marca blanca por pieza', 'Planes por reel entregado, factura según lo entregado y portal/PDF sin la marca Delirium', 'Hojas de cálculo'],
+      ['Zona horaria e idioma por cliente', 'Calendario y avisos en la hora del cliente (y la de Caracas); portal y documentos en español o inglés', 'Metricool, traducción manual'],
+      ['Pagos por pieza, comisiones y margen', 'Pago al freelancer al aprobar (se habilita cuando el cliente paga), comisiones automáticas y margen por cliente', 'Excel, Gusto'],
+      ['Seguridad del equipo', '2FA obligatoria para CEO, COO y Finanzas; alta y baja de freelancers con la lista de contraseñas a cambiar', 'Okta, 1Password'],
+    ] },
+    { area: 'Nuevo en la 1.9', estado: 'Activo', tone: 'ok', items: [
+      ['Bienvenida y acceso como socio', 'Formulario de marca en el portal (una vez) y guía para que el cliente nos agregue como socio en Meta, sin contraseñas', 'Typeform, Google Forms'],
+      ['Kit de marca', 'Colores, tipografías, logos, ejemplos y prohibiciones de cada cliente, a un clic desde el proyecto o la pieza', 'Frontify, Notion'],
+      ['Plan que se crea solo', 'Al renovar: factura automática y las piezas del mes con fechas y responsables por carga', 'Asana, ClickUp'],
+      ['Guion para aprobar y lista de revisión', 'El cliente aprueba el guion antes de editar; sin la lista (9:16, subtítulos, música, logo…) no se envía al cliente', 'Frame.io, Filestage'],
+      ['Banco de ideas', 'Ideas, tendencias, referencias y material por cliente; una idea se vuelve pieza con un clic', 'Notion, Milanote'],
+      ['Atención en 24 h y respuestas guardadas', 'Aviso al responsable y a Dirección si un cliente espera más de 24 h hábiles; textos frecuentes ES/EN con variables', 'Front, Help Scout'],
+      ['Avisos al celular', 'Web push gratis para aprobaciones, pagos, mensajes y bugs; cada persona elige los suyos', 'OneSignal, Pusher'],
+      ['Retención', 'Cobranza escalonada con mensajes listos, pausa del servicio, clientes en riesgo, encuesta del 1 al 10 y caso de éxito', 'Baremetrics, Delighted'],
+      ['Cierre ordenado y exportaciones', 'Baja con archivos, accesos, facturas y despedida; exportación completa o de un cliente', 'Checklists manuales'],
+      ['Panel de la meta', 'Ingreso recurrente, falta para la meta, ingresos por línea, por cobrar, margen y caja (CEO, COO y Finanzas)', 'ProfitWell, Excel'],
+    ] },
+    { area: 'Todavía no está, y por qué', estado: 'Pendiente', tone: 'warn', items: [
+      ['Correos automáticos', 'Invitaciones, recuperar contraseña y avisos por correo. Falta el dominio @staydelirious.com para enviar sin caer en spam', 'Zoho Mail, Campaigns'],
+      ['TikTok Ads y Google Ads', 'Gasto y resultados como con Meta. Piden cuentas de anunciante aprobadas y, en Google, un proyecto de Google Cloud', 'TikTok Ads Manager, Google Ads'],
+      ['YouTube', 'Programado pero apagado: Google Cloud no acepta Venezuela para crear el proyecto', 'YouTube Studio, Metricool'],
+      ['Mensajes directos de TikTok', 'La API de TikTok para empresas solo da comentarios; los mensajes directos se responden desde su app', 'TikTok Business Center'],
+      ['WhatsApp y chat web', 'Fuera por decisión del estudio por ahora', 'Zoho SalesIQ, WATI'],
     ] },
   ];
   D.views.mapa = async (el) => {

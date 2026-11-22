@@ -36,10 +36,13 @@
       await new Promise(r => setTimeout(r, 700)); f.contentWindow.focus(); f.contentWindow.print(); setTimeout(() => f.remove(), 60000);
       return { data: 'Elige "Guardar como PDF" en la ventana de impresión.' };
     },
+    carpeta: async () => ({ data: null }),
+    captura: async () => ({ data: null }),
     exportBackup: soloEscritorio, importBackup: soloEscritorio, openData: soloEscritorio,
     openExternal: async (u) => { if (/^(https?:|mailto:|tel:)/.test(u)) window.open(u, '_blank', 'noopener'); return { data: true }; },
     pickFile: async () => {
       const f = await elegirArchivo(); if (!f) return { data: null };
+      if (/\.(mp4|mov|m4v|webm|avi|mkv|wmv|mpg|mpeg)$/i.test(f.name)) return { error: `Los videos no se suben a la nube gratis${f.size > 50 * 1048576 ? ` (este pesa ${Math.round(f.size / 1048576)} MB y el límite es 50 MB)` : ''}: súbelo a Google Drive, compártelo con "cualquiera con el enlace" y pega el enlace.`, code: 'VIDEO' };
       if (f.size > 50 * 1024 * 1024) return { error: 'En la nube gratuita cada archivo puede pesar hasta 50 MB. Súbelo a tu Drive y pega el enlace.' };
       const u = await llamar('subirArchivo', [f.name]); if (u.error) return u;
       const r = await fetch(u.data.url, { method: 'PUT', headers: { 'x-upsert': 'true', 'Content-Type': 'application/octet-stream' }, body: f }).catch(() => null);

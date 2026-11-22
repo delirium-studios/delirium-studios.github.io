@@ -4,14 +4,13 @@
   const ref = (mod) => () => (D.refs[mod] || []).map(r => ({ value: r.id, label: r.nombre }));
   const canW = (k) => (D.meta.modules.find(m => m.key === k) || {}).level === 'W';
   const isClient = () => ['cliente', 'cliente_eq'].includes(D.me.rol);
-  const REDES = ['Instagram', 'Facebook', 'TikTok']; // X (API de pago) y YouTube (Google Cloud no acepta Venezuela) quedan programados pero ocultos
+  const REDES = ['Instagram', 'Facebook', 'TikTok']; // YouTube queda programado pero oculto: Google Cloud no acepta Venezuela
   const TONO = { Conectada: 'ok', 'Sin conectar': '', Vencida: 'danger', 'Elegir página': 'warn' };
   const NOTA = {
     Instagram: 'Cuenta profesional (de empresa o creador). Fotos, carruseles de una imagen, reels y stories.',
     Facebook: 'Páginas de Facebook que administra la persona que autoriza. Texto, fotos y videos.',
     TikTok: 'Solo videos. Hasta que TikTok apruebe la app, se publican en privado ("Solo yo").',
     YouTube: 'Videos y shorts. Hasta que Google apruebe la app, se suben en privado.',
-    X: 'Requiere créditos de la API de X (de pago). Se activa en Ajustes.',
   };
   const chipRed = (red) => `<span class="red-chip red-${String(red).toLowerCase()}">${esc(red)}</span>`;
 
@@ -52,6 +51,7 @@
     return {
       top: `<div class="note ${r.estado === 'Vencida' ? 'danger' : ''}" style="margin-bottom:16px">${chipRed(r.red)} &nbsp;${D.badge(r.estado, TONO[r.estado])} &nbsp;${esc(NOTA[r.red] || '')}</div>
         ${r.ultimo_error ? `<div class="note danger" style="margin-bottom:16px"><b>Último problema:</b> ${esc(r.ultimo_error)}</div>` : ''}
+        ${r.red === 'TikTok' && r.estado === 'Conectada' && !isClient() ? `<div class="note" style="margin-bottom:16px">Bandeja de comentarios: ${r.tiktok_bandeja ? `<b>conectada</b> desde ${D.date(r.tiktok_bandeja.conectada_el)}${r.bandeja_aviso ? ` · ${esc(r.bandeja_aviso)}` : ''}` : '<b>sin conectar</b>. Pulsa "Conectar bandeja" (o manda el enlace al cliente) para leer y responder sus comentarios desde Delirium OS.'}</div>` : ''}
         ${r.estado === 'Elegir página' && (r.paginas || []).length ? `<div class="card" style="margin-bottom:16px"><h3>¿Qué página es la de ${esc(r._cliente || 'este cliente')}?</h3><div class="list">${r.paginas.map(p => `<div class="item" style="cursor:default"><div class="t"><b>${esc(p.name)}</b></div><button class="btn sm violet" data-pagina="${esc(p.id)}">Usar esta</button></div>`).join('')}</div></div>` : ''}
         ${r.estado === 'Conectada' ? `<div class="grid g3" style="margin-bottom:14px"><div class="kpi"><div class="label">Seguidores</div><div class="v">${D.num(r.seguidores || 0)}</div></div><div class="kpi"><div class="label">Publicaciones</div><div class="v">${D.num(r.publicaciones_total || 0)}</div></div><div class="kpi"><div class="label">Conectada</div><div class="v" style="font-size:16px">${D.date(r.conectada_el)}</div><div class="s">${r._vence_dias !== null && r._vence_dias !== undefined ? `Renovación: ${r._vence_dias} días` : 'Se renueva sola'}</div></div></div>` : ''}
         ${r.estado === 'Conectada' && r._m30 ? (r._m30.vacio ? `<div class="note" style="margin-bottom:14px">Las métricas de esta cuenta llegan en las próximas horas (se traen los últimos 30 días y después se actualizan solas cada 6 horas).</div>` : `<div class="label" style="margin:4px 0 6px">Últimos 30 días${r._m30.metricas_al ? ` · actualizado ${esc(new Date(r._m30.metricas_al).toLocaleString('es-VE', { dateStyle: 'short', timeStyle: 'short' }))}` : ''}</div>
@@ -66,12 +66,16 @@
     const out = [];
     if (r.estado !== 'Sin conectar') out.push('<button class="btn" data-act="desconectarRed">Desconectar</button>');
     if (!isClient()) out.push('<button class="btn" data-act="copiarEnlaceRed">Enlace para el cliente</button>');
+    if (r.red === 'TikTok' && r.estado === 'Conectada' && !isClient()) out.push(r.tiktok_bandeja ? '<button class="btn" data-act="quitarBandejaTT">Quitar bandeja</button>' : '<button class="btn" data-act="bandejaTT">Conectar bandeja</button><button class="btn" data-act="bandejaTTCopiar">Enlace de bandeja</button>');
     out.push(`<button class="btn violet" data-act="conectarRed">${r.estado === 'Conectada' ? 'Volver a conectar' : 'Conectar ahora'}</button>`);
     return out.join('');
   };
   Object.assign(D.HANDLERS, {
     conectarRed: (r) => D.conectarRed({ id: r.id }),
     copiarEnlaceRed: (r) => D.conectarRed({ id: r.id }, { copiar: true }),
+    bandejaTT: (r) => D.conectarRed({ id: r.id, bandeja: true }),
+    bandejaTTCopiar: (r) => D.conectarRed({ id: r.id, bandeja: true }, { copiar: true }),
+    quitarBandejaTT: async (r) => { if (await D.try(() => D.call('action', 'cuenta.desconectar', { id: r.id, solo_bandeja: true }), 'Bandeja de TikTok desconectada.')) { D.closeAll(); D.rerender(); } },
     desconectarRed: async (r) => { if (!(await D.confirm('Desconectar', `Delirium OS dejará de publicar y medir en <b>${esc(r.nombre || r.red)}</b>. Puedes volver a conectarla cuando quieras.`, 'Desconectar'))) return; if (await D.try(() => D.call('action', 'cuenta.desconectar', { id: r.id }), 'Cuenta desconectada.')) { D.rerender(); D.openRecord('cuentas', r.id); } },
   });
   D.MOUNT.cuentas = (root, r) => {
@@ -151,6 +155,13 @@
           <p class="small muted">Instagram usa el "Unified login" de Meta: el cliente entra con Instagram o Facebook, elige su portfolio comercial y marca su cuenta profesional. Mientras la app esté en modo desarrollo, agrega a cada cliente como <b>Evaluador de Instagram</b> (para Facebook: que te den rol en la app o acceso a su página).</p></div>
         <div class="card"><h2>${chipRed('TikTok')}</h2><form class="form" data-s>${F('tiktok_client_key', 'Client key')}${F('tiktok_client_secret', 'Client secret', 'password')}${F('tiktok_auditada', 'TikTok ya aprobó la app (publicar en público)', 'checkbox')}</form>
           <p class="small muted">Productos: Login Kit y Content Posting API (Direct Post). Hasta la aprobación, los videos salen privados y como máximo 5 cuentas por día.</p></div>
+      </div>
+      <div class="grid g2" style="margin-top:16px">
+        <div class="card"><h2>${chipRed('TikTok')} Bandeja de comentarios (TikTok para empresas)</h2><form class="form" data-s>${F('ttb_app_id', 'App ID')}${F('ttb_app_secret', 'Secret', 'password')}${F('ttb_auth_url', 'Enlace de autorización de cuentas de TikTok', 'text', { full: true, placeholder: 'https://www.tiktok.com/v2/auth/authorize?client_key=…', hint: 'Lo copias del portal: My Apps → tu app → "TikTok account holder authorization URL".' })}</form>
+          <p class="small muted">Es una app aparte, gratis, en <b>business-api.tiktok.com</b> (TikTok API for Business), con el permiso <b>TikTok Accounts → Account Comment</b> (leer y administrar comentarios). En la app pon la misma dirección de vuelta de arriba. Después, en cada cuenta de TikTok conectada aparece <b>"Conectar bandeja"</b>. TikTok no deja leer mensajes directos: solo comentarios, y las respuestas tienen máximo 150 caracteres.</p></div>
+        <div class="card"><h2>${chipRed('Instagram')} ${chipRed('Facebook')} Permisos de la bandeja</h2><p class="small muted" style="margin-top:0">Para leer y responder comentarios y mensajes, agrega en la app de Meta estos permisos a cada configuración de inicio de sesión y pide a cada cliente que vuelva a conectar su cuenta:</p>
+          <ul class="small" style="margin:0;padding-left:18px;line-height:1.8"><li><b>Instagram:</b> instagram_manage_comments e instagram_manage_messages</li><li><b>Facebook:</b> pages_read_user_content, pages_manage_engagement y pages_messaging</li></ul>
+          <p class="small muted">En modo desarrollo funcionan con las cuentas que son evaluadoras de la app; no hace falta revisión de Meta para el uso interno.</p></div>
       </div>`;
     body.querySelectorAll('[data-copiar]').forEach(b => b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.copiar); D.toast('Copiado.'); } catch (e) { D.toast('No se pudo copiar.', 'error'); } });
   };
@@ -182,6 +193,7 @@
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   }
 
+  D.verMetricas = (f = {}) => { Object.assign(MF, { client_id: '', red: '' }, f); if (D.closeAll) D.closeAll(); D.go('metricas'); };
   D.views.metricas = async (el) => {
     const d = await D.try(() => D.call('metricasRedes', MF)); if (!d) return;
     const a = d.actual, c = d.cambio; const online = D.enNube ? D.enNube() : true;
@@ -194,41 +206,41 @@
     const vacio = !d.cuentas.length;
     el.innerHTML = `<div class="page">${D.pageHead('Métricas de redes', `Resultados de las cuentas completas de cada cliente (también lo que se publica desde el teléfono), del ${esc(d.desde.split('-').reverse().join('/'))} al ${esc(d.hasta.split('-').reverse().join('/'))}, comparados con el período anterior. Se actualizan solas cada 6 horas.`, filtros)}
       ${vacio ? `<div class="card"><h2>Todavía no hay cuentas conectadas</h2><p class="muted">Conecta las cuentas de Instagram, Facebook o TikTok de cada cliente en <b>Redes conectadas</b>. Las métricas aparecen aquí unas horas después (se traen los últimos 30 días).</p>${online ? '' : '<p class="muted">Las métricas necesitan el modo en línea.</p>'}<button class="btn violet" data-go-cuentas>Ir a Redes conectadas</button></div></div>` : `
-      <div class="grid g4">
+      <div class="grid g4" data-m="kpis">
         ${kpi('Seguidores', n(a.seguidores), a.crecimiento !== null ? `<span class="small" style="color:${a.crecimiento >= 0 ? 'var(--ok)' : 'var(--danger)'}">${a.crecimiento >= 0 ? '+' : ''}${D.num(a.crecimiento)}</span>` : '', a.crecimiento_pct !== null ? `(${pct(a.crecimiento_pct)})` : '')}
         ${kpi('Alcance', n(a.alcance), delta(c.alcance), 'cuentas únicas')}
         ${kpi('Vistas', n(a.vistas), delta(c.vistas))}
         ${kpi('Interacciones', n(a.interacciones), delta(c.interacciones), 'me gusta, comentarios, compartidos y guardados')}
       </div>
-      <div class="grid g4" style="margin-top:12px">
+      <div class="grid g4" data-m="kpis2" style="margin-top:12px">
         ${kpi('Engagement (sobre alcance)', pct(a.er_alcance), delta(c.er_alcance))}
         ${kpi('Engagement por publicación', pct(a.er_seguidores), '', 'sobre seguidores')}
         ${kpi('Publicaciones', n(a.publicaciones), delta(c.publicaciones))}
         ${kpi('Visitas al perfil · clics', `${n(a.visitas_perfil)} · ${n(a.clics_web)}`, '', 'Instagram')}
       </div>
       <div class="grid g2" style="margin-top:16px;align-items:start">
-        <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2 style="margin:0">Día a día</h2>${sel('data-mserie', MSERIE, Object.entries(NOMBRES))}</div>${linea(d.serie, MSERIE)}</div>
+        <div class="card" data-m="serie"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2 style="margin:0">Día a día</h2>${sel('data-mserie', MSERIE, Object.entries(NOMBRES))}</div>${linea(d.serie, MSERIE)}</div>
         <div class="card"><h2>Detalle del período</h2><div class="table-wrap"><table><tbody>
           ${[['Me gusta', a.me_gusta], ['Comentarios', a.comentarios], ['Compartidos', a.compartidos], ['Guardados', a.guardados], ['Cuentas que interactuaron', a.cuentas_interactuaron], ['Nuevos seguidores', a.nuevos_seguidores], ['Dejaron de seguir', a.dejaron], ['Toques en enlaces del perfil', a.toques_enlaces]].map(([k, v]) => `<tr><td>${esc(k)}</td><td class="num"><b>${n(v)}</b></td></tr>`).join('')}
         </tbody></table></div><p class="small muted">"—" significa que esa red no da ese dato. TikTok y YouTube no dan alcance ni métricas diarias de la cuenta: se suman las de sus videos.</p></div>
       </div>
-      <div class="card" style="margin-top:16px"><h2>Por red</h2>${D.table([
+      <div class="card" data-m="porred" style="margin-top:16px"><h2>Por red</h2>${D.table([
         { key: 'red', label: 'Red', render: x => chipRed(x.red) }, { key: 'cuentas', label: 'Cuentas', num: true }, { key: 'seguidores', label: 'Seguidores', num: true, render: x => `${n(x.seguidores)}<span class="sub">${x.crecimiento >= 0 ? '+' : ''}${D.num(x.crecimiento)}</span>` },
         { key: 'alcance', label: 'Alcance', num: true, render: x => n(x.alcance) }, { key: 'vistas', label: 'Vistas', num: true, render: x => n(x.vistas) }, { key: 'interacciones', label: 'Interacciones', num: true, render: x => n(x.interacciones) },
         { key: 'er_alcance', label: 'Engagement', num: true, render: x => pct(x.er_alcance) }, { key: 'publicaciones', label: 'Publicaciones', num: true }], d.porRed)}</div>
-      ${d.porCliente.length ? `<div class="card" style="margin-top:16px"><h2>Por cliente</h2><p class="small muted" style="margin-top:0">Pulsa un cliente para ver solo sus métricas.</p>${D.table([
+      ${d.porCliente.length ? `<div class="card" data-m="porcliente" style="margin-top:16px"><h2>Por cliente</h2><p class="small muted" style="margin-top:0">Pulsa un cliente para ver solo sus métricas.</p>${D.table([
         { key: 'cliente', label: 'Cliente', render: x => `<span data-mcli="${esc(x.client_id)}">${esc(x.cliente)}</span><span class="sub">${x.redes.map(chipRed).join(' ')}</span>` }, { key: 'seguidores', label: 'Seguidores', num: true, render: x => `${n(x.seguidores)}<span class="sub">${x.crecimiento >= 0 ? '+' : ''}${D.num(x.crecimiento)}</span>` },
         { key: 'alcance', label: 'Alcance', num: true, render: x => n(x.alcance) }, { key: 'interacciones', label: 'Interacciones', num: true, render: x => n(x.interacciones) }, { key: 'er_alcance', label: 'Engagement', num: true, render: x => pct(x.er_alcance) }, { key: 'publicaciones', label: 'Publicaciones', num: true }], d.porCliente)}</div>` : ''}
-      <div class="card" style="margin-top:16px"><h2>Mejores publicaciones</h2>${d.publicaciones.length ? D.table([
+      <div class="card" data-m="mejores" style="margin-top:16px"><h2>Mejores publicaciones</h2>${d.publicaciones.length ? D.table([
           { key: 'fecha', label: 'Fecha', render: x => `${esc(String(x.fecha).slice(0, 10).split('-').reverse().join('/'))}<span class="sub">${chipRed(x.red)} ${esc(x.tipo || '')}</span>` },
           { key: 'texto', label: 'Publicación', render: x => `${esc((x.texto || '(sin texto)').slice(0, 90))}<span class="sub">${esc(x.cliente)}${x.enlace ? ` · <a href="#" data-abrir="${esc(x.enlace)}">ver</a>` : ''}</span>` },
           { key: 'alcance', label: 'Alcance / vistas', num: true, render: x => `${n(x.alcance)}<span class="sub">${n(x.vistas)} vistas</span>` }, { key: 'interacciones', label: 'Interacciones', num: true, render: x => `<b>${n(x.interacciones)}</b><span class="sub">${pct(x.er)}</span>` }], d.publicaciones.slice(0, 15)) : '<p class="muted">Sin publicaciones en este período.</p>'}</div>
       <div class="grid g2" style="margin-top:16px;align-items:start">
-        <div class="card"><h2>Qué formato funciona mejor</h2>${d.formatos.length ? D.table([{ key: 'formato', label: 'Formato' }, { key: 'publicaciones', label: 'Publicaciones', num: true }, { key: 'promedio', label: 'Interacciones promedio', num: true, render: x => `<b>${D.num(x.promedio)}</b>` }], d.formatos) : '<p class="muted">Sin datos todavía.</p>'}</div>
+        <div class="card" data-m="formatos"><h2>Qué formato funciona mejor</h2>${d.formatos.length ? D.table([{ key: 'formato', label: 'Formato' }, { key: 'publicaciones', label: 'Publicaciones', num: true }, { key: 'promedio', label: 'Interacciones promedio', num: true, render: x => `<b>${D.num(x.promedio)}</b>` }], d.formatos) : '<p class="muted">Sin datos todavía.</p>'}</div>
       <div class="card"><h2>Cuentas incluidas</h2>${D.table([{ key: 'nombre', label: 'Cuenta', render: x => `${chipRed(x.red)} ${esc(x.nombre || '')}<span class="sub">${esc(x.cliente)}</span>` }, { key: 'seguidores', label: 'Seguidores', num: true, render: x => n(x.seguidores) },
         { key: 'metricas_al', label: 'Actualizada', render: x => x.metricas_al ? esc(new Date(x.metricas_al).toLocaleString('es-VE', { dateStyle: 'short', timeStyle: 'short' })) : '<span class="muted">Pendiente</span>' }, { key: 'estado', label: 'Estado', render: x => `${esc(x.estado)}${x.ultimo_error ? `<span class="sub" style="color:var(--warn)">${esc(x.ultimo_error.slice(0, 90))}</span>` : ''}` }], d.cuentas)}</div>
       </div>
-      ${d.audiencia.length ? `<div class="card" style="margin-top:16px"><h2>Audiencia</h2><div>${d.audiencia.map(x => `<div style="margin-bottom:18px"><h3>${chipRed(x.red)} ${esc(x.cuenta || '')} <span class="small muted">· ${esc(x.cliente)}</span></h3><div class="grid g4" style="gap:24px">
+      ${d.audiencia.length ? `<div class="card" data-m="audiencia" style="margin-top:16px"><h2>Audiencia</h2><div>${d.audiencia.map(x => `<div style="margin-bottom:18px"><h3>${chipRed(x.red)} ${esc(x.cuenta || '')} <span class="small muted">· ${esc(x.cliente)}</span></h3><div class="grid g4" style="gap:24px">
         ${x.edad ? `<div><div class="small muted">Edad</div>${barrasDe(x.edad)}</div>` : ''}${x.genero ? `<div><div class="small muted">Género</div>${barrasDe(x.genero)}</div>` : ''}${x.pais ? `<div><div class="small muted">Países</div>${barrasDe(x.pais, 5)}</div>` : ''}${x.ciudad ? `<div><div class="small muted">Ciudades</div>${barrasDe(x.ciudad, 5)}</div>` : ''}</div></div>`).join('')}</div><p class="small muted">Instagram solo da la audiencia de cuentas con 100 seguidores o más.</p></div>` : ''}
       </div>`}`;
     el.querySelectorAll('[data-mf]').forEach(s => s.onchange = () => { MF[s.dataset.mf] = s.dataset.mf === 'dias' ? Number(s.value) : s.value; D.views.metricas(el); });

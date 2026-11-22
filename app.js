@@ -2,7 +2,7 @@
 (function (D) {
   const esc = D.esc;
   const root = document.getElementById('root');
-  const CUSTOM = ['inicio', 'calendario', 'reportes', 'metricas', 'mapa', 'actividad', 'ajustes'];
+  const CUSTOM = ['inicio', 'guia', 'calendario', 'reportes', 'metricas', 'informes', 'carga', 'bandeja', 'hoy', 'pagos_equipo', 'margen', 'riesgo', 'encuestas', 'cobranza', 'panel_meta', 'mapa', 'actividad', 'ajustes'];
   D.isAdmin = () => !!(D.me && D.meta && D.meta.roles[D.me.rol] && D.meta.roles[D.me.rol].admin);
   D.canRead = (k) => !!(D.meta && D.meta.modules.some(m => m.key === k));
   const setTheme = (t) => document.documentElement.dataset.theme = t === 'claro' ? 'claro' : 'oscuro';
@@ -48,36 +48,49 @@
     };
   }
   async function loginScreen() {
+    const inv = (location.hash.match(/invitacion=([\w-]{20,})/) || [])[1]; if (inv && D.pantallaInvitacion) return D.pantallaInvitacion(root, inv, loginScreen);
     const demo = await D.call('demoAccounts');
     root.innerHTML = `<div class="auth">${art}<div class="panel"><form novalidate>
       <div><span class="label">Delirium Studios</span><h1>Entrar a Delirium OS</h1></div>
       <p class="sub">Usa el correo y la contraseña que te dio Dirección.</p>
       ${D.fieldHtml({ key: 'email', label: 'Correo', type: 'email', required: true, placeholder: 'nombre@staydelirious.com' })}
       ${D.fieldHtml({ key: 'password', label: 'Contraseña', type: 'password', required: true })}
+      <div class="field hidden" data-totp><label for="f-codigo">Código de verificación</label><input class="input mono" id="f-codigo" name="codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="11" placeholder="123 456" style="font-size:20px;letter-spacing:.18em">
+        <span class="hint">Ábrelo en tu app de verificación (Google Authenticator, Authy, Microsoft Authenticator…). ¿No tienes el teléfono? Escribe uno de tus códigos de respaldo.</span></div>
       <div class="err" role="alert"></div>
       <button class="btn primary" type="submit">Entrar</button>
-      <p class="small muted" style="margin:0">¿Olvidaste tu contraseña? Pídele a Dirección que la restablezca desde Usuarios y roles.</p>${enLinea()}
+      <p class="small muted" style="margin:0">¿Olvidaste tu contraseña o es tu primera vez? Pide a Dirección una invitación y <a href="#" data-codigo-inv>pega aquí tu código</a>.</p>${enLinea()}
       ${demo ? `<div class="demo-box"><b>Cuentas de ejemplo</b> · contraseña: <span class="mono">${esc(demo.password)}</span><br><span class="muted">Entra con cada rol para ver qué ve cada persona:</span>${demo.cuentas.map(c => `<button type="button" data-demo="${esc(c.email)}">${esc(c.rol)} — ${esc(c.email)}</button>`).join('')}</div>` : ''}
       </form></div></div>`;
     const f = root.querySelector('form'); bindConectar();
+    f.querySelector('[data-codigo-inv]').onclick = async (e) => { e.preventDefault(); const v = await D.prompt('Código de invitación', D.fieldHtml({ key: 'codigo', label: 'Pega el código que te mandó Dirección', required: true, full: true }), 'Continuar'); if (v && v.codigo) D.pantallaInvitacion(root, v.codigo.trim(), loginScreen); };
     f.querySelector('[name=password]').setAttribute('autocomplete', 'current-password');
     f.querySelectorAll('[data-demo]').forEach(b => b.onclick = () => { f.querySelector('[name=email]').value = b.dataset.demo; f.querySelector('[name=password]').value = demo.password; f.querySelector('[name=password]').focus(); });
     f.onsubmit = async (e) => {
       e.preventDefault(); const v = D.readForm(f); if (!v) return;
-      try { const me = await D.call('login', v.email, v.password); start(me); } catch (ex) { f.querySelector('.err').textContent = ex.message; }
+      const cod = f.querySelector('[name=codigo]'); const box = f.querySelector('[data-totp]');
+      try { const me = await D.call('login', v.email, v.password, box.classList.contains('hidden') ? undefined : cod.value.trim()); start(me); }
+      catch (ex) {
+        f.querySelector('.err').textContent = ex.message;
+        if (ex.code === 'TOTP') { box.classList.remove('hidden'); f.querySelector('.err').textContent = ''; f.querySelector('.sub').textContent = 'Tu cuenta tiene verificación en dos pasos. Escribe el código que aparece ahora en tu app.'; setTimeout(() => cod.focus(), 30); }
+        else if (!box.classList.contains('hidden')) { cod.value = ''; cod.focus(); }
+      }
     };
     setTimeout(() => f.querySelector('[name=email]').focus(), 50);
   }
 
   // ───────────── sesión ─────────────
+  D._start = (me) => { location.hash = '#/inicio'; return start(me); };
   async function start(me) {
     D.me = me; setTheme(me.tema);
+    if (me.debe_activar_2fa) { const ok = await D.dosPasosActivar({ forzado: true }); if (!ok) { await D.call('logout'); return loginScreen(); } me = await D.call('me'); D.me = me; }
     D.meta = await D.call('meta');
     D.settings = await D.call('settings');
     D.directory = await D.call('directory');
     await D.refreshRefs();
     renderShell();
     if (!location.hash || location.hash === '#') location.hash = '#/inicio'; else route();
+    if (!D.me.tutorial && !window.__sinTutorial) setTimeout(() => D.recorridoBienvenida && D.recorridoBienvenida(), 1200);
     setTimeout(() => D.buscarActualizacion && D.buscarActualizacion(false), 8000);
   }
   const navClosed = () => { try { const v = JSON.parse(localStorage.getItem('menu-cerrado:' + D.me.id) || 'null'); return v; } catch (e) { return null; } };
@@ -93,7 +106,7 @@
     root.innerHTML = `<div class="app"><aside class="sidebar">
         <div class="brand"><span class="logo"><img src="spiro.png" alt=""></span><div><b>Delirium OS</b><span>${esc(D.settings.web || 'staydelirious.com')}</span></div></div>
         <div class="side-tools"><button class="search-btn" data-palette title="Buscar (Ctrl + K)">${D.icon('search')} Buscar</button>${creatable.length ? `<button class="create-btn" data-create title="Crear algo nuevo" aria-label="Crear algo nuevo">${D.icon('plus')} Crear</button>` : ''}</div>
-        <nav class="nav" aria-label="Menú principal">${groups.map(g => { const isClosed = g.name && closed.includes(g.name); return `${g.name ? `<button class="group" data-group="${esc(g.name)}" aria-expanded="${!isClosed}"><span class="label">${esc(g.name)}</span><span class="gcount hidden" data-gcount="${esc(g.name)}"></span>${D.icon('chevron')}</button>` : ''}<div class="gitems ${isClosed ? 'closed' : ''}" data-gitems="${esc(g.name)}">${g.items.map(m => `<a href="#/${m.key}" data-nav="${m.key}">${D.icon(m.key)}<span>${esc(m.key === 'inicio' && !role.staff ? 'Mi portal' : m.label)}</span><span class="count hidden" data-count="${m.key}"></span></a>`).join('')}</div>`; }).join('')}</nav>
+        <nav class="nav" aria-label="Menú principal">${groups.map(g => { const isClosed = g.name && closed.includes(g.name); return `${g.name ? `<button class="group" data-group="${esc(g.name)}" aria-expanded="${!isClosed}"><span class="label">${esc(g.name)}</span><span class="gcount hidden" data-gcount="${esc(g.name)}"></span>${D.icon('chevron')}</button>` : ''}<div class="gitems ${isClosed ? 'closed' : ''}" data-gitems="${esc(g.name)}">${g.items.map(m => `<a href="#/${m.key}" data-nav="${m.key}" title="${esc(D.ayudaCorta ? D.ayudaCorta(m.key) : '')}">${D.icon(m.key)}<span>${esc(m.key === 'inicio' && !role.staff ? 'Mi portal' : m.label)}</span><span class="count hidden" data-count="${m.key}"></span></a>`).join('')}</div>`; }).join('')}</nav>
         ${canTimer ? '<div class="timer" data-timer></div>' : ''}
         <div class="me"><div class="avatar" aria-hidden="true">${esc(D.initials(D.me.nombre))}</div><div class="who"><b title="${esc(D.me.nombre)}">${esc(D.me.nombre)}</b><span>${esc(role.label)}</span></div>
           <div class="me-actions"><button class="icon-btn" data-theme title="Cambiar a tema ${D.me.tema === 'claro' ? 'oscuro' : 'claro'}" aria-label="Cambiar tema">${D.icon(D.me.tema === 'claro' ? 'moon' : 'sun')}</button>
@@ -183,6 +196,7 @@
     const act = document.querySelector(`[data-nav="${key}"]`); const gi = act && act.closest('.gitems.closed'); if (gi) { gi.classList.remove('closed'); const gb = document.querySelector(`[data-group="${CSS.escape(gi.dataset.gitems)}"]`); if (gb) gb.setAttribute('aria-expanded', 'true'); }
     const view = document.getElementById('view'); if (!view) return;
     if (CUSTOM.includes(key)) await D.views[key](view); else await D.views.module(key, view);
+    if (D.botonAyuda) D.botonAyuda(key);
     if (!keepOverlay) view.scrollTop = 0;
   }
   window.addEventListener('hashchange', () => route());
@@ -212,7 +226,18 @@
   async function account() {
     const role = D.meta.roles[D.me.rol];
     const v = await D.modal({ title: 'Mi cuenta', body: `<dl class="kv" style="margin-bottom:16px"><dt>Nombre</dt><dd>${esc(D.me.nombre)}</dd><dt>Correo</dt><dd>${esc(D.me.email)}</dd><dt>Rol</dt><dd>${esc(role.label)}</dd></dl>
-      <h3 style="margin-bottom:10px">Cambiar contraseña</h3><div class="form">${D.fieldHtml({ key: 'actual', label: 'Contraseña actual', type: 'password', required: true, full: true })}${D.fieldHtml({ key: 'nueva', label: 'Nueva contraseña', type: 'password', required: true })}${D.fieldHtml({ key: 'nueva2', label: 'Repite la nueva', type: 'password', required: true })}</div>`,
+      <h3 style="margin-bottom:10px">Cambiar contraseña</h3><div class="form">${D.fieldHtml({ key: 'actual', label: 'Contraseña actual', type: 'password', required: true, full: true })}${D.fieldHtml({ key: 'nueva', label: 'Nueva contraseña', type: 'password', required: true })}${D.fieldHtml({ key: 'nueva2', label: 'Repite la nueva', type: 'password', required: true })}</div>
+      <h3 style="margin:18px 0 8px">Verificación en dos pasos</h3><p class="small muted" style="margin:0 0 10px">${D.me.dos_pasos ? `Activa. Al entrar te pedimos un código de tu teléfono. Te quedan ${D.me.codigos_restantes} códigos de respaldo.` : 'Protege tu cuenta: además de la contraseña, al entrar te pediremos un código que cambia cada 30 segundos en tu teléfono.'}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${D.me.dos_pasos ? '<button class="btn" type="button" data-2fa-codigos>Nuevos códigos de respaldo</button><button class="btn" type="button" data-2fa-quitar>Desactivar</button>' : '<button class="btn primary" type="button" data-2fa>Activar verificación en dos pasos</button>'}</div>
+      ${!['cliente', 'cliente_eq'].includes(D.me.rol) ? `<h3 style="margin:18px 0 8px">Mi horario</h3><p class="small muted" style="margin:0 0 10px">Tu horario flexible de lunes a viernes (hora de Venezuela).</p><button class="btn" type="button" data-mi-horario>Editar mi horario</button>` : ''}
+      ${!['cliente', 'cliente_eq'].includes(D.me.rol) ? `<h3 style="margin:18px 0 8px">Avisos al celular</h3><p class="small muted" style="margin:0 0 10px">Aprobaciones, pagos, mensajes de clientes y bugs, aunque la app esté cerrada. Funciona en la versión web y celular.</p><button class="btn" type="button" data-avisos>Configurar avisos</button>` : ''}`,
+      onMount: (m, close) => {
+        const mh = m.querySelector('[data-mi-horario]'); if (mh) mh.onclick = () => { close(); D.editarHorario(); };
+        const av = m.querySelector('[data-avisos]'); if (av) av.onclick = () => { close(); D.configurarAvisos(); };
+        const b = m.querySelector('[data-2fa]'); if (b) b.onclick = async () => { close(); if (await D.dosPasosActivar()) { D.me = await D.call('me'); } };
+        const q = m.querySelector('[data-2fa-quitar]'); if (q) q.onclick = async () => { close(); await D.dosPasosPedirClave('Desactivar la verificación en dos pasos', 'dosPasosDesactivar'); };
+        const c = m.querySelector('[data-2fa-codigos]'); if (c) c.onclick = async () => { close(); await D.dosPasosPedirClave('Nuevos códigos de respaldo', 'dosPasosCodigos'); };
+      },
       buttons: [{ label: 'Cerrar' }, { label: 'Cambiar contraseña', kind: 'primary', value: (m) => D.readForm(m) }] });
     if (!v || typeof v !== 'object') return;
     if (v.nueva !== v.nueva2) return D.toast('Las contraseñas nuevas no coinciden.', 'error');

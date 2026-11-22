@@ -26,6 +26,7 @@
         { key: 'origen', label: '¿Cómo llegó?', type: 'select', options: ['Instagram','TikTok','Referido','Web','Evento','LinkedIn','Correo en frío','Discord','WhatsApp','Otro'] },
         { key: 'temperatura', label: 'Temperatura', type: 'select', options: ['Caliente','Tibio','Frío'], hint: 'Caliente: listo para comprar · Frío: todavía no nos conoce.' },
         { key: 'categoria', label: 'Tipo de cliente', type: 'select', options: ['Marca / empresa','Juegos / gaming','Música / entretenimiento','Restaurante / comida','Moda / retail','Creador / personal','Otro'] },
+        { key: 'servicios', label: 'Servicios que tiene con nosotros', type: 'multi', options: () => (D.refs.catalogo || []).map(x => ({ value: x.id, label: x.nombre })), show: () => (D.refs.catalogo || []).length > 0, hint: 'Del Catálogo de servicios. Así se ve en su ficha y en el catálogo quién tiene cada servicio.' },
         { key: 'valor_estimado', label: 'Valor estimado de la venta', type: 'money' },
         { key: 'meta_cuenta', label: 'Cuenta publicitaria de Meta', placeholder: 'act_1234567890', hint: 'Para traer sus campañas solas (Ajustes → Conexiones).' },
         { key: 'email', label: 'Correo', type: 'email' }, { key: 'telefono', label: 'Teléfono / WhatsApp', type: 'tel' },
@@ -67,6 +68,7 @@
         { key: 'nombre', label: 'Servicio', render: r => `${D.esc(r.nombre)}${r.entregables ? `<span class="sub">${D.esc(r.entregables)}</span>` : ''}` },
         { key: 'categoria', label: 'Área' }, { key: 'precio', label: 'Precio', num: true, render: r => D.money(r.precio) },
         { key: 'rondas_incluidas', label: 'Rondas', num: true }, { key: 'plazo_dias', label: 'Plazo', num: true, render: r => r.plazo_dias ? `${r.plazo_dias} días` : '—' },
+        { key: '_clientes', label: 'Clientes', num: true, render: r => (r._clientes || []).length ? `${(r._clientes || []).length}<span class="sub">${D.esc((r._clientes || []).slice(0, 2).join(', '))}${(r._clientes || []).length > 2 ? '…' : ''}</span>` : '<span class="muted">0</span>' },
       ],
       fields: [
         { key: 'nombre', label: 'Nombre del servicio', required: true, full: true },

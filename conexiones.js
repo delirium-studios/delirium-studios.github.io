@@ -13,9 +13,9 @@
   D.views.ajustes = async (el) => {
     const s = D.settings; const info = D.info = (await window.dos.info()).data;
     const F = (key, label, type = 'text', extra = {}) => D.fieldHtml({ key, label, type, ...extra }, s);
-    const tabs = [['estudio', 'Estudio'], ['nube', 'Trabajar en línea'], ['conexiones', 'Conexiones'], ['redes', 'Redes sociales'], ['web', 'Tienda y app web'], ['copias', 'Copias y versión']].filter(([k]) => !(info.web && (k === 'nube' || k === 'copias')));
+    const tabs = [['estudio', 'Estudio'], ['nube', 'Trabajar en línea'], ['conexiones', 'Conexiones'], ['redes', 'Redes sociales'], ['monedas', 'Monedas'], ['cobros', 'Cobros'], ['atencion', 'Atención y producción'], ['seguridad', 'Seguridad'], ['web', 'Tienda y app web'], ['copias', 'Copias y versión']].filter(([k]) => !(info.web && (k === 'nube' || k === 'copias')));
     if (!tabs.some(([k]) => k === tab)) tab = 'estudio';
-    el.innerHTML = `<div class="page">${D.pageHead('Ajustes', 'Datos del estudio, modo en línea, conexiones con Discord, Meta y GitHub, y copias de seguridad.', tab === 'estudio' || tab === 'conexiones' || tab === 'web' || tab === 'redes' ? `<button class="btn primary" data-save-s>${D.icon('check')} Guardar ajustes</button>` : '')}
+    el.innerHTML = `<div class="page">${D.pageHead('Ajustes', 'Datos del estudio, modo en línea, conexiones con Discord, Meta y GitHub, y copias de seguridad.', tab === 'estudio' || tab === 'conexiones' || tab === 'web' || tab === 'redes' || tab === 'seguridad' || tab === 'cobros' || tab === 'atencion' ? `<button class="btn primary" data-save-s>${D.icon('check')} Guardar ajustes</button>` : '')}
       <div class="seg tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" aria-selected="${tab === k}" class="${tab === k ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('')}</div>
       <div data-tabbody style="margin-top:16px"></div></div>`;
     const body = el.querySelector('[data-tabbody]');
@@ -32,6 +32,10 @@
     if (tab === 'conexiones') conexionesTab(body, s, info);
     if (tab === 'web') webTab(body, s, info, F);
     if (tab === 'redes') await D.redesTab(body, s, info, F);
+    if (tab === 'monedas') D.monedasTab(body);
+    if (tab === 'seguridad') D.seguridadTab(body, F);
+    if (tab === 'cobros') D.cobrosTab(body, F);
+    if (tab === 'atencion') D.atencionTab(body, F);
     if (tab === 'copias') {
       body.innerHTML = `<div class="grid g2">
         <div class="card"><h2>Copias de seguridad</h2><p class="muted" style="margin-top:0">${info.modo === 'nube' ? 'En modo en línea los datos están en tu proyecto de Supabase. Igual puedes exportar una copia completa para guardarla aparte.' : 'Delirium OS guarda una copia automática cada día (se conservan 30 días). También puedes exportar una copia completa para guardarla en otro lugar.'}</p>
@@ -42,7 +46,9 @@
       const imp = body.querySelector('[data-imp]'); if (imp) imp.onclick = async () => { const r = await window.dos.importBackup(); if (r.error) D.toast(r.error, 'error'); else if (r.data) { D.toast('Copia restaurada. Vuelve a entrar.'); setTimeout(() => location.reload(), 900); } };
       body.querySelector('[data-folder]').onclick = () => window.dos.openData();
       const bu = body.querySelector('[data-buscar-upd]'); if (bu) bu.onclick = () => D.buscarActualizacion(true);
+      const usoBox = document.createElement('div'); usoBox.className = 'card'; usoBox.style.marginTop = '16px'; body.appendChild(usoBox); if (D.pintarUso) D.pintarUso(usoBox);
     }
+    if (tab === 'copias' && D.exportarCard) D.exportarCard(body);
     const sv = el.querySelector('[data-save-s]');
     if (sv) sv.onclick = async () => {
       const vals = {}; for (const f of el.querySelectorAll('form[data-s]')) { const v = D.readForm(f); if (!v) return; Object.assign(vals, v); }
@@ -192,7 +198,7 @@ document.getElementById('delirium-contacto').onsubmit = async (e) => {
         <form class="form" data-s>${F('meta_token', 'Token de acceso', 'password', { full: true })}${F('meta_version', 'Versión de la API', 'text', { hint: 'Déjalo en v26.0 salvo que Meta pida otra.' })}</form>
         <p class="small muted">Después, en cada cliente escribe su <b>cuenta publicitaria</b> (act_…) o en cada campaña su <b>ID de Meta</b>.</p>
         <div class="actions"><button class="btn sm" data-ext="https://developers.facebook.com/apps">Abrir Meta for Developers</button><button class="btn sm violet" data-sync-meta>Sincronizar ahora</button></div></div>
-      <div class="card"><h2>${D.icon('download')} GitHub · actualizaciones automáticas</h2><p class="muted" style="margin-top:0">Cada PC busca sola la versión nueva y se actualiza con un clic. Crea en GitHub un repositorio <b>público</b> solo para las versiones (por ejemplo <span class="mono">delirium-os-versiones</span>; el código no va ahí). En cada versión nueva: <b>Releases → Draft a new release</b>, etiqueta <span class="mono">v1.4.1</span> y adjunta el instalador .exe y su archivo .sha256.</p>
+      <div class="card"><h2>${D.icon('download')} GitHub · actualizaciones automáticas</h2><p class="muted" style="margin-top:0">Cada PC busca sola la versión nueva y se actualiza con un clic. Crea en GitHub un repositorio <b>público</b> solo para las versiones (por ejemplo <span class="mono">delirium-os-versiones</span>; el código no va ahí). En cada versión nueva: <b>Releases → Draft a new release</b>, etiqueta <span class="mono">v1.5.0</span> y adjunta el instalador .exe y su archivo .sha256.</p>
         <form class="form" data-s>${F('actualizaciones_repo', 'Repositorio (usuario/repositorio)', 'text', { full: true, placeholder: 'tu-usuario/delirium-os-versiones' })}</form>
         <div class="actions" style="margin-top:10px"><button class="btn sm" data-ext="https://github.com/new">Crear repositorio</button><button class="btn sm violet" data-buscar-upd>Buscar actualización ahora</button></div></div>
     </div>

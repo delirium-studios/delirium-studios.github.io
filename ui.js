@@ -36,10 +36,10 @@ window.DOS = window.DOS || {};
 
   // ───── estados con color + texto (nunca solo color) ─────
   const TONES = {
-    ok: ['Hecha','Cancelada','Aprobada','Aprobado','Verificado','Entregado','Actual','Aceptada','Firmado','Activo','Pagado','Entrada','Ajuste (+)','Resuelto','Publicado','Arreglado','Cubierta','Canjeada','Contratado','Terminada','Caliente','Disponible'],
-    info: ['En curso','Contactado','Enviada','Enviado','Por verificar','Propuesta enviada','Abono parcial','Por iniciar','En atención','Revisión interna','Programado','Activa','Confirmado','En arreglo','Entrevista','Prueba técnica','Oferta','Tibio','Planeada','En producción','Verificado','Media'],
-    warn: ['En revisión','Pendiente','Borrador','Por hacer','Pausado','De permiso','Por cobrar','Alta','Por cancelar','Por contactar','Salida','Ajuste (−)','Nuevo','Esperando cliente','Revisión del cliente','Cambios pedidos','Por aprobar','En diseño','Recibido','Pausada','Por renovar','Frío'],
-    danger: ['Vencida','Vencido','Rechazada','Rechazado','Cancelado','Anulada','Inactivo','Urgente','Bloqueante','Descartado','No se arregla','Sin respuesta'],
+    ok: ['Cumplida','Libre','Hecha','Cancelada','Aprobada','Aprobado','Verificado','Entregado','Actual','Aceptada','Firmado','Activo','Pagado','Entrada','Ajuste (+)','Resuelto','Publicado','Arreglado','Cubierta','Canjeada','Contratado','Terminada','Caliente','Disponible'],
+    info: ['Usada','Bajo','A los 7 días','En camino','Normal','Respondido','En curso','Contactado','Enviada','Enviado','Por verificar','Propuesta enviada','Abono parcial','Por iniciar','En atención','Revisión interna','Programado','Activa','Confirmado','En arreglo','Entrevista','Prueba técnica','Oferta','Tibio','Planeada','En producción','Verificado','Media'],
+    warn: ['Guion para aprobar','Medio','Cliente dice listo','Vence hoy','A los 3 días','Lleno','Por empezar','En revisión','Pendiente','Borrador','Por hacer','Pausado','De permiso','Por cobrar','Alta','Por cancelar','Por contactar','Salida','Ajuste (−)','Nuevo','Esperando cliente','Revisión del cliente','Cambios pedidos','Por aprobar','En diseño','Recibido','Pausada','Por renovar','Frío'],
+    danger: ['Alto','Atrasada','No se cumplió','Saturado','Vencida','Vencido','Rechazada','Rechazado','Cancelado','Anulada','Inactivo','Urgente','Bloqueante','Descartado','No se arregla','Sin respuesta'],
   };
   D.tone = (s) => { for (const [t, arr] of Object.entries(TONES)) if (arr.includes(s)) return t; return ''; };
   D.badge = (s, tone) => s ? `<span class="badge ${tone ?? D.tone(s)}">${esc(s)}</span>` : '<span class="muted">—</span>';
@@ -92,7 +92,9 @@ window.DOS = window.DOS || {};
     clip: 'M21.4 11.1l-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5', send: 'M22 2L11 13M22 2l-7 20-4-9-9-4z', eye: 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
     alert: 'M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01',
     menu: 'M3 6h18M3 12h18M3 18h18',
+ideas: 'M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z', respuestas: 'M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-4-1L3 20l1.2-4.5A8.4 8.4 0 1 1 21 11.5zM8 10h8M8 14h5', riesgo: 'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01', encuestas: 'M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z', cobranza: 'M3 4h18v16H3zM3 9h18M8 15h3', panel_meta: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z', pagos_equipo: 'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6', margen: 'M3 3v18h18M7 14l4-4 3 3 6-6', hoy: 'M22 2 11 13M22 2l-7 20-4-9-9-4z', plantillas: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2zM8 9h8M8 13h5', metas: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2z', bandeja: 'M22 12h-6l-2 3h-4l-2-3H2M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z', informes: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 18v-3M12 18v-6M16 18v-4', carga: 'M3 20h18M6 16v-5M10 16V8M14 16v-3M18 16V5', lock: 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4',
     metricas: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
+    guia: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5zM4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5M9 7h7M9 11h5',
     cuentas: 'M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7',
     evaluaciones: 'M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z',
     compras: 'M9 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM20 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6',
@@ -234,7 +236,7 @@ window.DOS = window.DOS || {};
     root.querySelectorAll('[data-file]').forEach(box => {
       const inp = box.querySelector('input[type=hidden]');
       const draw = (fv) => { inp.value = fv ? JSON.stringify(fv) : ''; box.querySelector('[data-fname]').innerHTML = fv ? esc(fv.nombre) : '<span class="muted">Ningún archivo</span>'; box.querySelector('[data-pick]').innerHTML = `${D.icon('clip')} ${fv ? 'Cambiar archivo' : 'Adjuntar archivo…'}`; const u = box.querySelector('[data-unpick]'); if (u) u.classList.toggle('hidden', !fv); };
-      box.querySelector('[data-pick]').onclick = async () => { const r = await window.dos.pickFile(); if (r && r.error) return D.toast(r.error, 'error'); if (r && r.data) { draw(r.data); D.toast('Archivo adjuntado.'); } };
+      box.querySelector('[data-pick]').onclick = async () => { const r = await window.dos.pickFile(); if (r && r.error) { if (r.code === 'VIDEO' && D.pegarEnlaceVideo) return D.pegarEnlaceVideo(box.closest('form'), r.error); return D.toast(r.error, 'error'); } if (r && r.data) { draw(r.data); D.toast('Archivo adjuntado.'); } };
       const un = box.querySelector('[data-unpick]'); if (un) un.onclick = () => draw(null);
     });
   };

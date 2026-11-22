@@ -18,7 +18,13 @@
   }
 
   function shell(a, { tipo, codigo, fecha, extra = '' }, inner) {
-    const s = D.settings;
+    const ctx = D._pdfCtx || {}; const sm = !!ctx.sinMarca;
+    const s = sm ? { ...D.settings, empresa: D.settings.marca_blanca_nombre || 'Estudio de producción', web: '', redes: '', rif: '', telefono: '', correo_general: '' } : D.settings;
+    if (sm) a = { ...a, logo: '' };
+    const html = shellBase(a, s, { tipo, codigo, fecha, extra }, inner);
+    return ctx.lang === 'en' && D.traducirPdf ? D.traducirPdf(html) : html;
+  }
+  function shellBase(a, s, { tipo, codigo, fecha, extra = '' }, inner) {
     return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><style>
       ${a.sora ? `@font-face{font-family:Sora;src:url(${a.sora});font-weight:700}` : ''}
       ${a.body ? `@font-face{font-family:SG;src:url(${a.body});font-weight:400}` : ''}
@@ -41,10 +47,10 @@
       h3{font:700 12.5pt Sora,Arial;margin:16px 0 4px}
       .stamp{display:inline-block;border:2px solid #0f8a57;color:#0f8a57;font:700 11pt Sora,Arial;padding:4px 12px;border-radius:6px;transform:rotate(-4deg)}
     </style></head><body>
-      <div class="top">${a.logo ? `<img src="${a.logo}">` : ''}<div><div class="n">${esc(s.empresa || 'Delirium Studios')}</div><div class="w">${esc((s.web || 'staydelirious.com').toUpperCase())}</div></div>
+      <div class="top">${a.logo ? `<img src="${a.logo}">` : ''}<div><div class="n">${esc(s.empresa || 'Delirium Studios')}</div><div class="w">${esc((s.web ?? 'staydelirious.com').toUpperCase())}</div></div>
         <div class="doc"><b>${esc(tipo)}</b><span>${esc(codigo || '')} · ${esc(D.date(fecha))}</span>${extra}</div></div>
       <div class="wrap">${inner}</div>
-      <div class="foot"><span>${esc(s.correo_general || 'hola@staydelirious.com')} · ${esc(s.web || 'staydelirious.com')}${s.redes ? ' · ' + esc(s.redes) : ''}${s.telefono ? ' · ' + esc(s.telefono) : ''}${s.rif ? ' · RIF ' + esc(s.rif) : ''}</span><span>Stay delirious. ✦</span></div>
+      ${s.marca_blanca_nombre && s.empresa === s.marca_blanca_nombre ? '' : `<div class="foot"><span>${esc(s.correo_general || 'hola@staydelirious.com')} · ${esc(s.web || 'staydelirious.com')}${s.redes ? ' · ' + esc(s.redes) : ''}${s.telefono ? ' · ' + esc(s.telefono) : ''}${s.rif ? ' · RIF ' + esc(s.rif) : ''}</span><span>Stay delirious. ✦</span></div>`}
     </body></html>`;
   }
   const linesTable = (r) => `<table><thead><tr><th>Descripción</th><th class="r">Cant.</th><th class="r">Precio</th><th class="r">Subtotal</th></tr></thead><tbody>

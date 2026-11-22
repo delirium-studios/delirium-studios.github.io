@@ -60,7 +60,7 @@
     if (!v) return; const d = await D.try(() => D.call('reporteCliente', clientId, v.mes)); if (d) D.pdfReporte(d);
   };
   const prevActCli = D.ACTIONS.clientes;
-  D.ACTIONS.clientes = (r) => `${prevActCli ? prevActCli(r) : ''}<button class="btn" data-act="reportecli">${D.icon('pdf')} Reporte del mes</button>`;
+  D.ACTIONS.clientes = (r) => `${prevActCli ? prevActCli(r) : ''}<button class="btn" data-act="reportecli">${D.icon('pdf')} Reporte PDF</button>`;
   D.HANDLERS.reportecli = (r) => D.reporteMensual(r.id);
 
   // ───────────── evaluaciones ─────────────
@@ -178,6 +178,59 @@
       el.querySelectorAll('[data-open^="contratos:"]').forEach(a => a.onclick = () => D.openRecord('contratos', a.dataset.open.split(':')[1]));
     }
     const acts = el.querySelector('.page-head .actions');
-    if (acts && D.me.rol === 'cliente') { acts.insertAdjacentHTML('afterbegin', `<button class="btn" data-mi-reporte>${D.icon('pdf')} Mi reporte del mes</button>`); acts.querySelector('[data-mi-reporte]').onclick = () => D.reporteMensual(null); }
+    if (acts && D.me.rol === 'cliente') { acts.insertAdjacentHTML('afterbegin', `<button class="btn" data-mi-reporte>${D.icon('pdf')} Mi reporte</button>`); acts.querySelector('[data-mi-reporte]').onclick = () => D.reporteMensual(null); }
   };
+})(window.DOS);
+
+// ───── vista completa del cliente y quién tiene cada servicio ─────
+(function (D) {
+  const esc = D.esc; const n = (x) => D.num(x || 0);
+  const chip = (red) => `<span class="red-chip red-${String(red).toLowerCase()}">${esc(red)}</span>`;
+  const link = (m, id, t) => `<a href="#" data-o="${m}:${esc(id)}">${esc(t)}</a>`;
+  const sec = (titulo, cuerpo, extra = '') => `<div class="section" data-sec="${titulo.normalize('NFD').replace(/[^a-zA-Z ]/g, '').trim().split(' ')[0].toLowerCase()}"><h3>${titulo}${extra}</h3>${cuerpo}</div>`;
+  const vacio = (t) => `<p class="muted small" style="margin:0">${t}</p>`;
+  const fila = (izq, der = '') => `<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--border)"><div>${izq}</div><div class="small" style="text-align:right;white-space:nowrap">${der}</div></div>`;
+  const pct = (x) => x === null || x === undefined ? '—' : `${String(x).replace('.', ',')}%`;
+  const delta = (x) => x === null || x === undefined ? '' : ` <span class="small" style="color:${x >= 0 ? 'var(--ok)' : 'var(--danger)'}">${x >= 0 ? '▲' : '▼'} ${String(Math.abs(x)).replace('.', ',')}%</span>`;
+
+  function render(f) {
+    const p = f.puede || {}; const out = [];
+    const kpis = [];
+    if (p.metricas && f.metricas) { const a = f.metricas.actual, c = f.metricas.cambio;
+      kpis.push(`<div class="kpi"><div class="label">Seguidores</div><div class="v" style="font-size:22px">${n(a.seguidores)}</div><div class="s">${a.crecimiento >= 0 ? '+' : ''}${n(a.crecimiento)} en 30 días</div></div>`);
+      kpis.push(`<div class="kpi"><div class="label">Interacciones · 30 días</div><div class="v" style="font-size:22px">${n(a.interacciones)}</div><div class="s">${pct(a.er_alcance)} eng.${delta(c.interacciones)}</div></div>`); }
+    if (p.facturas && f.cobros) kpis.push(`<div class="kpi ${f.cobros.saldo > 0 ? 'alert' : ''}"><div class="label">Por cobrar</div><div class="v" style="font-size:22px">${D.money(f.cobros.saldo)}</div><div class="s">${f.cobros.por_verificar ? `${D.money(f.cobros.por_verificar)} por verificar` : 'Al día'}</div></div>`);
+    if (p.planes && f.planes) { const act = f.planes.filter(x => x.estado === 'Activo'); kpis.push(`<div class="kpi"><div class="label">Planes activos</div><div class="v" style="font-size:22px">${act.length}</div><div class="s">${D.money(act.reduce((a, x) => a + x.monto, 0))} recurrente</div></div>`); }
+    if (kpis.length) out.push(`<div class="grid g2" data-sec="cifras" style="margin-bottom:6px">${kpis.join('')}</div>`);
+    out.push(sec('Servicios que tiene con nosotros', (f.servicios.length ? f.servicios.map(x => fila(`${D.canRead('catalogo') ? link('catalogo', x.id, x.nombre) : esc(x.nombre)}<span class="sub" style="display:block">${esc(x.categoria)}${x.entregables ? ' · ' + esc(x.entregables) : ''}</span>`, x.precio !== undefined ? D.money(x.precio) : '')).join('') : vacio(((D.meta.modules.find(m => m.key === 'clientes') || {}).level === 'W') ? 'Sin servicios marcados. Edita el cliente y marca los que tiene en "Servicios que tiene con nosotros".' : 'Sin servicios marcados.'))
+      + (p.planes && f.planes && f.planes.length ? `<div class="label" style="margin:12px 0 4px">Planes y alquileres</div>${f.planes.map(x => fila(`${link('planes', x.id, x.nombre)}<span class="sub" style="display:block">${esc(x.tipo || '')} · ${esc(x.frecuencia || '')}</span>`, `${D.money(x.monto)}<br>${D.badge(x.estado)}${x.proximo_cobro ? `<span class="sub" style="display:block">cobro ${D.date(x.proximo_cobro)}</span>` : ''}`)).join('')}` : '')));
+    if (p.cuentas) out.push(sec('Redes que manejamos', (f.redes || []).length ? f.redes.map(x => fila(`${chip(x.red)} ${link('cuentas', x.id, x.nombre || x.red)}<span class="sub" style="display:block">${esc(x.estado)}${x.m30 && !x.m30.vacio ? ` · ${n(x.m30.interacciones)} interacciones en 30 días` : ''}</span>`, `${n(x.seguidores)} seguidores${x.m30 && x.m30.crecimiento !== null && x.m30.crecimiento !== undefined ? `<span class="sub" style="display:block">${x.m30.crecimiento >= 0 ? '+' : ''}${n(x.m30.crecimiento)}</span>` : ''}`)).join('') : vacio('No hay redes conectadas para este cliente.'), p.metricas ? ` <button class="btn sm" data-360-metricas>${D.icon('metricas')} Ver sus métricas</button>` : ''));
+    if (p.metas) out.push(sec('Metas', (f.metas || []).length ? f.metas.map(x => `<div style="padding:7px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:10px"><span>${link('metas', x.id, x.titulo)}</span>${D.badge(x._ritmo)}</div>
+      <div class="progress ${x._ritmo === 'Atrasada' ? 'near' : ''}" style="margin-top:6px" title="${x._avance}%"><i style="width:${Math.min(100, x._avance || 0)}%"></i></div><span class="sub" style="display:block">${x._avance || 0}% · ${x._esperado}% del tiempo · cierra ${D.date(x.hasta)}</span></div>`).join('') : vacio('Sin metas. Crea una en Metas por cliente para medir el avance del mes.')));
+    if (f.horas && f.horas.mejores && f.horas.mejores.length && D.textoHoras) out.push(sec('Mejor hora para publicar', `<p class="small" style="margin:0">${D.textoHoras(f.horas)}</p>`));
+    if (p.proyectos) out.push(sec('Proyectos', (f.proyectos || []).length ? f.proyectos.map(x => fila(`${link('proyectos', x.id, x.nombre)}<span class="sub" style="display:block">${esc(x.servicio || '')}</span>`, `${D.badge(x.estado)}${x.avance !== null ? `<span class="sub" style="display:block">${x.avance}% · entrega ${D.date(x.entrega)}</span>` : ''}`)).join('') : vacio('Sin proyectos.')));
+    if (p.redes && f.publicaciones) out.push(sec('Calendario de redes', (f.publicaciones.proximas.length ? f.publicaciones.proximas.map(x => fila(`${link('redes', x.id, x.titulo)}<span class="sub" style="display:block">${esc((x.redes || []).join(', '))}</span>`, `${D.datetime(x.fecha)}<br>${D.badge(x.estado)}`)).join('') : vacio('No hay publicaciones próximas.')) + `<p class="small muted" style="margin:8px 0 0">${f.publicaciones.publicadas_mes} publicadas este mes · ${f.publicaciones.por_aprobar} esperando aprobación del cliente</p>`));
+    if (p.anuncios && (f.campanas || []).length) out.push(sec('Campañas de anuncios activas', f.campanas.map(x => fila(`${link('anuncios', x.id, x.nombre)}<span class="sub" style="display:block">${esc(x.plataforma || '')}</span>`, `${D.money(x.gastado)} de ${D.money(x.presupuesto)}<span class="sub" style="display:block">${n(x.resultados)} ${esc(x.tipo_resultado || 'resultados')}</span>`)).join('')));
+    if (p.piezas && (f.piezas || []).length) out.push(sec('Piezas en curso', f.piezas.map(x => fila(link('piezas', x.id, x.titulo), `${D.badge(x.estado)}${x.fecha_limite ? `<span class="sub" style="display:block">${D.date(x.fecha_limite)}</span>` : ''}`)).join('')));
+    if (p.facturas && f.cobros && f.cobros.pendientes.length) out.push(sec('Facturas por cobrar', f.cobros.pendientes.map(x => fila(`${link('facturas', x.id, x.codigo)}<span class="sub" style="display:block">${esc(x.concepto || '')}</span>`, `${D.money(x.saldo)}<span class="sub" style="display:block">${esc(x.estado)}${x.vence ? ' · vence ' + D.date(x.vence) : ''}</span>`)).join('')));
+    if (p.cotizaciones && (f.cotizaciones || []).length) out.push(sec('Cotizaciones abiertas', f.cotizaciones.map(x => fila(`${link('cotizaciones', x.id, x.codigo)}<span class="sub" style="display:block">${esc(x.titulo || '')}</span>`, `${D.money(x.total)}<br>${D.badge(x.estado)}`)).join('')));
+    if (p.contratos && (f.contratos || []).length) out.push(sec('Contratos', f.contratos.map(x => fila(`${link('contratos', x.id, x.titulo)}<span class="sub" style="display:block">${esc(x.tipo || '')}</span>`, `${D.badge(x.estado)}${x.vence ? `<span class="sub" style="display:block">vence ${D.date(x.vence)}</span>` : ''}`)).join('')));
+    if (p.soporte && (f.solicitudes || []).length) out.push(sec('Solicitudes abiertas', f.solicitudes.map(x => fila(`${link('soporte', x.id, x.codigo)}<span class="sub" style="display:block">${esc(x.asunto || '')}</span>`, `${D.badge(x.estado)}${x.prioridad ? `<span class="sub" style="display:block">${esc(x.prioridad)}</span>` : ''}`)).join('')));
+    return out.join('');
+  }
+
+  const prevCli = D.MOUNT.clientes;
+  D.MOUNT.clientes = async (root, r) => {
+    if (prevCli) prevCli(root, r);
+    const box = root.querySelector('[data-ficha360]'); if (!box) return;
+    const f = await D.try(() => D.call('fichaCliente', r.id)); if (!f) { box.innerHTML = ''; return; }
+    box.innerHTML = render(f);
+    box.querySelectorAll('[data-o]').forEach(a => a.onclick = (e) => { e.preventDefault(); const [m, i] = a.dataset.o.split(':'); D.openRecord(m, i); });
+    const bm = box.querySelector('[data-360-metricas]'); if (bm) bm.onclick = () => { if (D.verMetricas) D.verMetricas({ client_id: r.id }); else { D.closeAll(); D.go('metricas'); } };
+  };
+
+  // Catálogo: quién tiene cada servicio
+  const prevCat = D.DETAIL.catalogo;
+  D.DETAIL.catalogo = (r) => { const base = prevCat ? prevCat(r) : {}; const ids = r._clientes_ids || [];
+    return { ...base, bottom: `${base.bottom || ''}<div class="section"><h3>Clientes con este servicio · ${ids.length}</h3>${ids.length ? ids.map((id, i) => `<div style="padding:4px 0">${D.canRead('clientes') ? `<a href="#" data-open="clientes:${esc(id)}">${esc(r._clientes[i])}</a>` : esc(r._clientes[i])}</div>`).join('') : '<p class="muted small">Ningún cliente lo tiene marcado todavía. Se marca en la ficha de cada cliente.</p>'}${r._ingreso_planes ? `<p class="small" style="margin-top:8px">Planes activos con este servicio: <b>${D.money(r._ingreso_planes)}</b> recurrente.</p>` : ''}</div>` }; };
 })(window.DOS);

@@ -5,7 +5,7 @@
   const ESTADOS_SOP = ['Nuevo','En atención','Esperando cliente','Resuelto','Cerrado'];
   const ESTADOS_PZ = ['En producción','Revisión interna','Revisión del cliente','Cambios pedidos','Aprobada'];
   const ESTADOS_POST = ['Idea','En diseño','Por aprobar','Aprobado','Programado','Publicado'];
-  const REDES = ['Instagram','TikTok','Facebook','YouTube','LinkedIn','X','Discord','Twitch','Pinterest'];
+  const REDES = ['Instagram','TikTok','Facebook','YouTube','LinkedIn','Discord','Twitch','Pinterest'];
   const ESTADOS_BUG = ['Nuevo','Confirmado','En arreglo','Arreglado','Verificado','No se arregla'];
   const ESTADOS_PED = ['Nuevo','Pagado','Enviado','Entregado','Cancelado'];
   const ETAPAS_CAND = ['Recibido','Entrevista','Prueba técnica','Oferta','Contratado','Descartado'];
@@ -102,7 +102,7 @@
       fields: [
         { key: 'nombre', label: 'Campaña', required: true, full: true },
         { key: 'client_id', label: 'Cliente', type: 'select', options: ref('clientes'), required: true },
-        { key: 'plataforma', label: 'Plataforma', type: 'select', options: ['Meta (Facebook / Instagram)','TikTok','Google / YouTube','LinkedIn','X','Spotify','Otra'], required: true },
+        { key: 'plataforma', label: 'Plataforma', type: 'select', options: ['Meta (Facebook / Instagram)','TikTok','Google / YouTube','LinkedIn','Spotify','Otra'], required: true },
         { key: 'objetivo', label: 'Objetivo', type: 'select', options: ['Alcance','Tráfico','Mensajes','Leads','Ventas','Seguidores','Instalaciones','Wishlists'] },
         { key: 'estado', label: 'Estado', type: 'select', options: ['Planeada','Activa','Pausada','Terminada'], default: 'Planeada' },
         { key: 'inicio', label: 'Inicio', type: 'date' }, { key: 'fin', label: 'Fin', type: 'date' },
@@ -199,6 +199,7 @@
       ],
       fields: [
         { key: 'nombre', label: 'Plan o alquiler', required: true, full: true, placeholder: 'Ej.: Manejo de redes · Café Nocturno' },
+        { key: 'service_id', label: 'Servicio del catálogo', type: 'select', options: () => (D.refs.catalogo || []).map(x => ({ value: x.id, label: x.nombre })), show: () => (D.refs.catalogo || []).length > 0, hint: 'Opcional: así el catálogo muestra cuánto deja cada servicio al mes.' },
         { key: 'client_id', label: 'Cliente', type: 'select', options: ref('clientes'), required: true },
         { key: 'tipo', label: 'Tipo', type: 'select', options: ['Plan mensual','Suscripción','Mantenimiento','Alquiler'], default: 'Plan mensual' },
         { key: 'monto', label: 'Monto por período', type: 'money', required: true },
