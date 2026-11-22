@@ -1,5 +1,5 @@
 // @ts-nocheck
-// Delirium OS · servidor en línea v1.9.0 · generado automáticamente, no editar.
+// Delirium OS · servidor en línea v1.10.1 · generado automáticamente, no editar.
 // Pégalo completo en Supabase > Edge Functions > Deploy a new function > Via Editor, con el nombre "delirium".
 import { Buffer } from "node:buffer";
 var __defProp = Object.defineProperty;
@@ -1596,6 +1596,23 @@ Alta y baja
 - Cierre ordenado: ficha del cliente \u2192 "Cerrar cliente": archivos finales, quitar accesos (Meta, b\xF3veda, portal), facturas pendientes, motivo y mensaje de despedida. Pasa a "Antiguo cliente" y puede volver.
 - Panel de la meta (CEO, COO y Finanzas): ingreso recurrente, lo que falta para la meta (15.000 USD por defecto), ingresos por l\xEDnea, por cobrar, margen y caja del mes.
 - Exportar: Ajustes \u2192 Copias \u2192 "Exportar todo" (solo el CEO) o, para un cliente, su ficha \u2192 "Exportar sus datos" (sin costos ni notas internas).`
+      },
+      {
+        v: 7,
+        titulo: "Idioma de la app e instalaci\xF3n",
+        categoria: "Gu\xEDa",
+        visibilidad: "Todo el equipo",
+        contenido: `Idioma
+- La app del equipo est\xE1 en espa\xF1ol, English y Portugu\xEAs. Cada persona lo cambia en Mi cuenta \u2192 Idioma de la app; tambi\xE9n se puede elegir en la pantalla de entrada.
+- Direcci\xF3n pone el idioma por defecto del equipo en Ajustes \u2192 Estudio \u2192 Valores por defecto.
+- Se traduce la interfaz (men\xFAs, botones, formularios, avisos). Lo que escribe el equipo (nombres de clientes, notas, mensajes) y los manuales quedan como se escribieron.
+
+Instalaci\xF3n
+- El instalador detecta el idioma de Windows y muestra la ventana de Delirium: Bienvenida, Opciones (carpeta y accesos directos), Instalando y Listo. No pide permisos de administrador ni contrase\xF1as.
+- Las actualizaciones autom\xE1ticas se instalan solas en segundo plano, como siempre.
+
+Solo para el equipo
+- La app de escritorio es solo para los trabajadores. Los clientes entran a su portal desde la p\xE1gina web, con el enlace que les env\xEDa el estudio.`
       }
     ];
   }
@@ -2132,6 +2149,14 @@ var require_core19 = __commonJS({
       return h;
     }
     var metodos = {
+      // ══════════════ idioma de la app (por persona) ══════════════
+      setIdioma(code) {
+        const u = this.requireUser();
+        if (!["es", "en", "pt"].includes(code)) throw entrada("Idioma no v\xE1lido.");
+        u.idioma_app = code;
+        this.persist();
+        return code;
+      },
       // ══════════════ 21 · bienvenida del cliente ══════════════
       camposBienvenida() {
         return BIENVENIDA.map(([k, l]) => ({ key: k, label: l }));
@@ -2946,6 +2971,7 @@ var require_core = __commonJS({
       stock_minimo_defecto: 5,
       metodos_pago: ["Pago M\xF3vil", "Zelle", "Transferencia", "Binance", "Efectivo", "PayPal", "Payoneer", "Otro"],
       metodos_info: null,
+      idioma_defecto: "es",
       meta_mensual: 15e3,
       meta_business_id: "",
       checklist_revision: null,
@@ -3161,7 +3187,7 @@ var require_core = __commonJS({
       }
       demoAccounts() {
         if (!this.db.meta || !this.db.meta.demo) return null;
-        return { password: this.db.meta.demo_password, cuentas: this.db.users.filter((u) => u.demo && u.activo).map((u) => ({ email: u.email, nombre: u.nombre, rol: ROLES[u.rol].label })) };
+        return { password: this.db.meta.demo_password, cuentas: this.db.users.filter((u) => u.demo && u.activo).map((u) => ({ email: u.email, nombre: u.nombre, rol: ROLES[u.rol].label, cliente: CLIENT_ROLES.includes(u.rol) })) };
       }
       publicUser(u) {
         if (!u) return null;
@@ -6397,6 +6423,7 @@ var require_servidor = __commonJS({
     var R = require_redes();
     var P = require_push();
     var METODOS = [
+      "setIdioma",
       "guardarBienvenida",
       "marcarAccesoSocio",
       "kitMarca",

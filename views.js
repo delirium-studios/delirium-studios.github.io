@@ -605,6 +605,11 @@
       ['Pagos por pieza, comisiones y margen', 'Pago al freelancer al aprobar (se habilita cuando el cliente paga), comisiones automáticas y margen por cliente', 'Excel, Gusto'],
       ['Seguridad del equipo', '2FA obligatoria para CEO, COO y Finanzas; alta y baja de freelancers con la lista de contraseñas a cambiar', 'Okta, 1Password'],
     ] },
+    { area: 'Nuevo en la 1.10', estado: 'Activo', tone: 'ok', items: [
+      ['Idiomas', 'La app del equipo en español, English y Português; cada persona elige el suyo y Dirección pone el del equipo', 'Traducción manual'],
+      ['Instalador de Delirium', 'Ventana propia con el idioma de la PC, carpeta, accesos directos y progreso real', 'Instaladores genéricos'],
+      ['App solo para el equipo', 'Los clientes usan su portal en la página web; la app de escritorio no los deja entrar', 'Accesos mezclados'],
+    ] },
     { area: 'Nuevo en la 1.9', estado: 'Activo', tone: 'ok', items: [
       ['Bienvenida y acceso como socio', 'Formulario de marca en el portal (una vez) y guía para que el cliente nos agregue como socio en Meta, sin contraseñas', 'Typeform, Google Forms'],
       ['Kit de marca', 'Colores, tipografías, logos, ejemplos y prohibiciones de cada cliente, a un clic desde el proyecto o la pieza', 'Frontify, Notion'],

@@ -51,7 +51,7 @@
     const inv = (location.hash.match(/invitacion=([\w-]{20,})/) || [])[1]; if (inv && D.pantallaInvitacion) return D.pantallaInvitacion(root, inv, loginScreen);
     const demo = await D.call('demoAccounts');
     root.innerHTML = `<div class="auth">${art}<div class="panel"><form novalidate>
-      <div><span class="label">Delirium Studios</span><h1>Entrar a Delirium OS</h1></div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><span class="label">Delirium Studios</span><h1>Entrar a Delirium OS</h1></div>${D.IDIOMAS ? `<select class="input" data-idioma-login aria-label="Idioma" style="width:auto">${D.IDIOMAS.map(i => `<option value="${i.code}" ${D.idioma() === i.code ? 'selected' : ''}>${i.label}</option>`).join('')}</select>` : ''}</div>
       <p class="sub">Usa el correo y la contraseña que te dio Dirección.</p>
       ${D.fieldHtml({ key: 'email', label: 'Correo', type: 'email', required: true, placeholder: 'nombre@staydelirious.com' })}
       ${D.fieldHtml({ key: 'password', label: 'Contraseña', type: 'password', required: true })}
@@ -60,11 +60,12 @@
       <div class="err" role="alert"></div>
       <button class="btn primary" type="submit">Entrar</button>
       <p class="small muted" style="margin:0">¿Olvidaste tu contraseña o es tu primera vez? Pide a Dirección una invitación y <a href="#" data-codigo-inv>pega aquí tu código</a>.</p>${enLinea()}
-      ${demo ? `<div class="demo-box"><b>Cuentas de ejemplo</b> · contraseña: <span class="mono">${esc(demo.password)}</span><br><span class="muted">Entra con cada rol para ver qué ve cada persona:</span>${demo.cuentas.map(c => `<button type="button" data-demo="${esc(c.email)}">${esc(c.rol)} — ${esc(c.email)}</button>`).join('')}</div>` : ''}
+      ${demo ? `<div class="demo-box"><b>Cuentas de ejemplo</b> · contraseña: <span class="mono">${esc(demo.password)}</span><br><span class="muted">Entra con cada rol para ver qué ve cada persona:</span>${demo.cuentas.filter(c => window.dos.web || !c.cliente).map(c => `<button type="button" data-demo="${esc(c.email)}">${esc(c.rol)} — ${esc(c.email)}</button>`).join('')}</div>` : ''}
       </form></div></div>`;
     const f = root.querySelector('form'); bindConectar();
     f.querySelector('[data-codigo-inv]').onclick = async (e) => { e.preventDefault(); const v = await D.prompt('Código de invitación', D.fieldHtml({ key: 'codigo', label: 'Pega el código que te mandó Dirección', required: true, full: true }), 'Continuar'); if (v && v.codigo) D.pantallaInvitacion(root, v.codigo.trim(), loginScreen); };
     f.querySelector('[name=password]').setAttribute('autocomplete', 'current-password');
+    const il = f.querySelector('[data-idioma-login]'); if (il) il.onchange = () => D.aplicarIdioma(il.value);
     f.querySelectorAll('[data-demo]').forEach(b => b.onclick = () => { f.querySelector('[name=email]').value = b.dataset.demo; f.querySelector('[name=password]').value = demo.password; f.querySelector('[name=password]').focus(); });
     f.onsubmit = async (e) => {
       e.preventDefault(); const v = D.readForm(f); if (!v) return;
@@ -86,6 +87,7 @@
     if (me.debe_activar_2fa) { const ok = await D.dosPasosActivar({ forzado: true }); if (!ok) { await D.call('logout'); return loginScreen(); } me = await D.call('me'); D.me = me; }
     D.meta = await D.call('meta');
     D.settings = await D.call('settings');
+    if (D.aplicarIdioma) { let info = null; try { info = (await window.dos.info()).data; } catch (e) {} if (['cliente', 'cliente_eq'].includes(me.rol)) { D.aplicarIdioma('es'); } else { const l = D.idiomaInicial(me, D.settings, info); D.aplicarIdioma(l); if (!me.idioma_app && l !== (D.settings.idioma_defecto || 'es')) D.call('setIdioma', l).catch(() => {}); } }
     D.directory = await D.call('directory');
     await D.refreshRefs();
     renderShell();
@@ -230,10 +232,12 @@
       <h3 style="margin:18px 0 8px">Verificación en dos pasos</h3><p class="small muted" style="margin:0 0 10px">${D.me.dos_pasos ? `Activa. Al entrar te pedimos un código de tu teléfono. Te quedan ${D.me.codigos_restantes} códigos de respaldo.` : 'Protege tu cuenta: además de la contraseña, al entrar te pediremos un código que cambia cada 30 segundos en tu teléfono.'}</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap">${D.me.dos_pasos ? '<button class="btn" type="button" data-2fa-codigos>Nuevos códigos de respaldo</button><button class="btn" type="button" data-2fa-quitar>Desactivar</button>' : '<button class="btn primary" type="button" data-2fa>Activar verificación en dos pasos</button>'}</div>
       ${!['cliente', 'cliente_eq'].includes(D.me.rol) ? `<h3 style="margin:18px 0 8px">Mi horario</h3><p class="small muted" style="margin:0 0 10px">Tu horario flexible de lunes a viernes (hora de Venezuela).</p><button class="btn" type="button" data-mi-horario>Editar mi horario</button>` : ''}
+      ${D.IDIOMAS ? `<h3 style="margin:18px 0 8px">Idioma de la app</h3><select class="input" data-idioma-cuenta style="width:auto">${D.IDIOMAS.map(i => `<option value="${i.code}" ${D.idioma() === i.code ? 'selected' : ''}>${i.label}</option>`).join('')}</select><p class="small muted" style="margin:6px 0 0">Los datos que escribe el equipo (clientes, notas, mensajes) no se traducen.</p>` : ''}
       ${!['cliente', 'cliente_eq'].includes(D.me.rol) ? `<h3 style="margin:18px 0 8px">Avisos al celular</h3><p class="small muted" style="margin:0 0 10px">Aprobaciones, pagos, mensajes de clientes y bugs, aunque la app esté cerrada. Funciona en la versión web y celular.</p><button class="btn" type="button" data-avisos>Configurar avisos</button>` : ''}`,
       onMount: (m, close) => {
         const mh = m.querySelector('[data-mi-horario]'); if (mh) mh.onclick = () => { close(); D.editarHorario(); };
         const av = m.querySelector('[data-avisos]'); if (av) av.onclick = () => { close(); D.configurarAvisos(); };
+        const il = m.querySelector('[data-idioma-cuenta]'); if (il) il.onchange = async () => { const r = await D.try(() => D.call('setIdioma', il.value)); if (r) { D.me.idioma_app = r; D.aplicarIdioma(r); D.toast(D.tr('Idioma guardado.')); } };
         const b = m.querySelector('[data-2fa]'); if (b) b.onclick = async () => { close(); if (await D.dosPasosActivar()) { D.me = await D.call('me'); } };
         const q = m.querySelector('[data-2fa-quitar]'); if (q) q.onclick = async () => { close(); await D.dosPasosPedirClave('Desactivar la verificación en dos pasos', 'dosPasosDesactivar'); };
         const c = m.querySelector('[data-2fa-codigos]'); if (c) c.onclick = async () => { close(); await D.dosPasosPedirClave('Nuevos códigos de respaldo', 'dosPasosCodigos'); };

@@ -24,7 +24,7 @@
     if (tab === 'estudio') body.innerHTML = `<div class="grid g2">
         <div class="card"><h2>Delirium Studios</h2><form class="form" data-s>${F('empresa', 'Nombre del estudio', 'text', { required: true })}${F('web', 'Web')}${F('redes', 'Usuario en redes')}${F('rif', 'RIF / ID fiscal')}${F('telefono', 'Teléfono', 'tel')}${F('direccion', 'Dirección', 'text', { full: true })}
           ${F('correo_general', 'Correo general', 'email')}${F('correo_soporte', 'Correo de soporte', 'email')}${F('correo_ventas', 'Correo de ventas', 'email')}${F('correo_prensa', 'Correo de prensa', 'email')}</form></div>
-        <div class="card"><h2>Valores por defecto</h2><form class="form" data-s>${F('moneda', 'Moneda (código)')}${F('simbolo', 'Símbolo')}${F('impuesto_nombre', 'Nombre del impuesto')}${F('impuesto_pct', 'Impuesto por defecto (%)', 'pct')}
+        <div class="card"><h2>Valores por defecto</h2><form class="form" data-s>${D.IDIOMAS ? F('idioma_defecto', 'Idioma del equipo por defecto', 'select', { options: D.IDIOMAS.map(i => ({ value: i.code, label: i.label })), hint: 'Cada persona puede cambiarlo en Mi cuenta.' }) : ''}${F('moneda', 'Moneda (código)')}${F('simbolo', 'Símbolo')}${F('impuesto_nombre', 'Nombre del impuesto')}${F('impuesto_pct', 'Impuesto por defecto (%)', 'pct')}
           ${F('rondas_incluidas_defecto', 'Rondas incluidas por defecto', 'number')}${F('costo_ronda_extra_defecto', 'Costo por ronda extra', 'money')}${F('stock_minimo_defecto', 'Aviso de stock mínimo', 'number')}
           <div class="field full"><label for="f_metodos">Métodos de pago (separados por coma)</label><input class="input" id="f_metodos" name="metodos_pago_txt" value="${esc((s.metodos_pago || []).join(', '))}"></div></form></div></div>`;
 
