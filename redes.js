@@ -141,9 +141,9 @@
       </div>
       <div class="grid g2" style="margin-top:16px">
         <div class="card"><h2>${chipRed('Instagram')} ${chipRed('Facebook')} Meta</h2><form class="form" data-s>
-          ${F('ig_app_id', 'Instagram: ID de la app de Instagram')}${F('ig_app_secret', 'Instagram: clave secreta de la app', 'password')}
-          ${F('meta_app_id', 'Facebook: ID de la app')}${F('meta_app_secret', 'Facebook: clave secreta de la app', 'password')}</form>
-          <p class="small muted">En Meta: app tipo Empresa → caso de uso "Administrar mensajes y contenido en Instagram" (Instagram) y "Administrar todo en tu página" (Facebook). Mientras la app esté en modo desarrollo, agrega a cada cliente como <b>Evaluador de Instagram</b> o haz que te den acceso de administrador a su página.</p></div>
+          ${F('meta_app_id', 'ID de la app de Meta')}${F('meta_app_secret', 'Clave secreta de la app de Meta', 'password')}
+          ${F('ig_config_id', 'Instagram: ID de la configuración (Unified login)', 'text', { hint: 'Inicio de sesión con Facebook para empresas → Configuraciones.' })}${F('fb_config_id', 'Facebook: ID de la configuración de páginas', 'text', { hint: 'Configuración con token de usuario y permisos de páginas.' })}</form>
+          <p class="small muted">Instagram usa el "Unified login" de Meta: el cliente entra con Instagram o Facebook, elige su portfolio comercial y marca su cuenta profesional. Mientras la app esté en modo desarrollo, agrega a cada cliente como <b>Evaluador de Instagram</b> (para Facebook: que te den rol en la app o acceso a su página).</p></div>
         <div class="card"><h2>${chipRed('TikTok')}</h2><form class="form" data-s>${F('tiktok_client_key', 'Client key')}${F('tiktok_client_secret', 'Client secret', 'password')}${F('tiktok_auditada', 'TikTok ya aprobó la app (publicar en público)', 'checkbox')}</form>
           <p class="small muted">Productos: Login Kit y Content Posting API (Direct Post). Hasta la aprobación, los videos salen privados y como máximo 5 cuentas por día.</p></div>
         <div class="card"><h2>${chipRed('YouTube')}</h2><form class="form" data-s>${F('google_client_id', 'Client ID de Google')}${F('google_client_secret', 'Client secret', 'password')}${F('youtube_auditada', 'Google ya aprobó la app (subir en público)', 'checkbox')}</form>

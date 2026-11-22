@@ -1,5 +1,5 @@
 // @ts-nocheck
-// Delirium OS · servidor en línea v1.3.0 · generado automáticamente, no editar.
+// Delirium OS · servidor en línea v1.4.0 · generado automáticamente, no editar.
 // Pégalo completo en Supabase > Edge Functions > Deploy a new function > Via Editor, con el nombre "delirium".
 import { Buffer } from "node:buffer";
 var __defProp = Object.defineProperty;
@@ -345,7 +345,7 @@ META (Facebook e Instagram Ads) \xB7 Ajustes \u2192 Conexiones
 
 GITHUB (actualizaciones autom\xE1ticas) \xB7 Ajustes \u2192 Conexiones
 \u2022 Crea un repositorio p\xFAblico solo para las versiones, por ejemplo delirium-os-versiones (el c\xF3digo del programa no va ah\xED).
-\u2022 En cada versi\xF3n nueva: Releases \u2192 Draft a new release \u2192 etiqueta v1.3.0 (la versi\xF3n) \u2192 adjunta el instalador .exe y su archivo .sha256 \u2192 Publish.
+\u2022 En cada versi\xF3n nueva: Releases \u2192 Draft a new release \u2192 etiqueta v1.4.0 (la versi\xF3n) \u2192 adjunta el instalador .exe y su archivo .sha256 \u2192 Publish.
 \u2022 Cada PC ver\xE1 el aviso "Actualizar ahora" y se actualizar\xE1 sola, conservando los datos.`
       },
       {
@@ -721,6 +721,8 @@ var require_core = __commonJS({
       zona_horaria: "America/Caracas",
       meta_app_id: "",
       meta_app_secret: "",
+      ig_config_id: "",
+      fb_config_id: "",
       ig_app_id: "",
       ig_app_secret: "",
       tiktok_client_key: "",
@@ -2879,15 +2881,19 @@ var require_redes = __commonJS({
     }
     var verificadorDe = (estado, secreto) => crypto.createHmac("sha256", String(secreto)).update("pkce|" + estado).digest("base64url");
     var retoDe = (ver) => crypto.createHash("sha256").update(ver).digest("base64url");
+    var igUnificado = (s) => !!s.ig_config_id || !s.ig_app_id;
+    var igHost = (token) => token && token.extra && token.extra.modo === "unificado" ? API.fb : API.ig;
     function faltan(red, s) {
-      const k = { Instagram: ["ig_app_id", "ig_app_secret"], Facebook: ["meta_app_id", "meta_app_secret"], TikTok: ["tiktok_client_key", "tiktok_client_secret"], YouTube: ["google_client_id", "google_client_secret"], X: ["x_client_id", "x_client_secret"] }[red];
+      const k = { Instagram: igUnificado(s) ? ["meta_app_id", "meta_app_secret", "ig_config_id"] : ["ig_app_id", "ig_app_secret"], Facebook: ["meta_app_id", "meta_app_secret"], TikTok: ["tiktok_client_key", "tiktok_client_secret"], YouTube: ["google_client_id", "google_client_secret"], X: ["x_client_id", "x_client_secret"] }[red];
       if (!k) throw err("Red no soportada.");
       if (red === "X" && !s.x_activo) throw err("La conexi\xF3n con X est\xE1 apagada: la API de X es de pago. Act\xEDvala en Ajustes > Conexiones cuando tengan cr\xE9ditos.");
       if (k.some((x) => !s[x])) throw err(`Direcci\xF3n todav\xEDa no configur\xF3 la app de ${red} (Ajustes > Conexiones > Redes sociales).`);
     }
     function urlAutorizar(red, s, { redirect, estado, secreto }) {
       faltan(red, s);
+      if (red === "Instagram" && igUnificado(s)) return `https://www.facebook.com/dialog/oauth?${form({ client_id: s.meta_app_id, config_id: s.ig_config_id, override_default_response_type: "true", redirect_uri: redirect, response_type: "code", state: estado, prompt: "login" })}`;
       if (red === "Instagram") return `https://www.instagram.com/oauth/authorize?${form({ client_id: s.ig_app_id, redirect_uri: redirect, response_type: "code", state: estado, enable_fb_login: "0", force_reauth: "true", scope: "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights" })}`;
+      if (red === "Facebook" && s.fb_config_id) return `https://www.facebook.com/dialog/oauth?${form({ client_id: s.meta_app_id, config_id: s.fb_config_id, override_default_response_type: "true", redirect_uri: redirect, response_type: "code", state: estado })}`;
       if (red === "Facebook") return `https://www.facebook.com/${v(s)}/dialog/oauth?${form({ client_id: s.meta_app_id, redirect_uri: redirect, state: estado, response_type: "code", scope: "pages_show_list,pages_read_engagement,pages_manage_posts,read_insights" })}`;
       if (red === "TikTok") return `https://www.tiktok.com/v2/auth/authorize/?${form({ client_key: s.tiktok_client_key, redirect_uri: redirect, state: estado, response_type: "code", scope: "user.info.basic,user.info.profile,user.info.stats,video.list,video.publish,video.upload" })}`;
       if (red === "YouTube") return `https://accounts.google.com/o/oauth2/v2/auth?${form({ client_id: s.google_client_id, redirect_uri: redirect, state: estado, response_type: "code", access_type: "offline", prompt: "consent", include_granted_scopes: "true", scope: "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly" })}`;
@@ -2897,6 +2903,37 @@ var require_redes = __commonJS({
     async function canjear(red, s, { code, redirect, estado, secreto }, f = fetch) {
       faltan(red, s);
       const ahora = Date.now();
+      if (red === "Instagram" && igUnificado(s)) {
+        const { j: j2 } = await pedir(f, `${API.fb}/${v(s)}/oauth/access_token?${form({ client_id: s.meta_app_id, client_secret: s.meta_app_secret, redirect_uri: redirect, code })}`, {}, "Instagram");
+        const access = j2.access_token;
+        const dura = Number(j2.expires_in) || 0;
+        let empresa = null;
+        try {
+          const { j: me } = await pedir(f, `${API.fb}/${v(s)}/me?${form({ fields: "client_business_id", access_token: access })}`, {}, "Instagram");
+          empresa = me.client_business_id || null;
+        } catch (e) {
+        }
+        const { j: asig } = await pedir(f, `${API.fb}/${v(s)}/me/assigned_instagram_accounts?${form({ fields: "id,username", limit: 100, access_token: access })}`, {}, "Instagram");
+        const lista = (asig.data || []).filter((a) => a && a.id);
+        if (!lista.length) throw err("Instagram: no se comparti\xF3 ninguna cuenta profesional. Al conectar, marca la cuenta de Instagram del cliente (debe ser de empresa o creador).");
+        const token2 = { access, expira: dura ? ahora + dura * 1e3 : null, extra: { modo: "unificado", empresa, config_id: s.ig_config_id } };
+        const datos = async (id) => {
+          try {
+            return await perfil("Instagram", s, token2, f, id);
+          } catch (e) {
+            const a = lista.find((x) => x.id === id) || {};
+            return { cuenta_ext: String(id), nombre: "@" + (a.username || id), enlace_perfil: a.username ? `https://www.instagram.com/${a.username}/` : "", seguidores: 0 };
+          }
+        };
+        if (lista.length === 1) return { token: token2, cuenta: await datos(String(lista[0].id)) };
+        const paginas = [];
+        for (const a of lista) {
+          const d = await datos(String(a.id));
+          paginas.push({ id: d.cuenta_ext, name: d.nombre, token: access, link: d.enlace_perfil, seguidores: d.seguidores });
+        }
+        token2.extra.paginas = paginas;
+        return { token: token2, cuenta: { paginas: paginas.map((p) => ({ id: p.id, name: p.name })) } };
+      }
       if (red === "Instagram") {
         const { j: corto } = await pedir(f, `${API.igAuth}/oauth/access_token`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: form({ client_id: s.ig_app_id, client_secret: s.ig_app_secret, grant_type: "authorization_code", redirect_uri: redirect, code: String(code).replace(/#_$/, "") }) }, "Instagram");
         const c = corto.data ? corto.data[0] : corto;
@@ -2935,6 +2972,10 @@ var require_redes = __commonJS({
     async function renovar(red, s, token, f = fetch) {
       const ahora = Date.now();
       if (red === "Facebook") return null;
+      if (red === "Instagram" && token.extra && token.extra.modo === "unificado") {
+        if (!token.expira || token.expira - ahora > 6e4) return null;
+        throw err("Instagram: la conexi\xF3n venci\xF3. Vuelve a conectar la cuenta.", "VENCIDO");
+      }
       if (red === "Instagram") {
         if (token.expira && token.expira - ahora > 10 * 864e5) return null;
         const { j: j2 } = await pedir(f, `${API.ig}/refresh_access_token?${form({ grant_type: "ig_refresh_token", access_token: token.access })}`, {}, "Instagram");
@@ -2956,6 +2997,11 @@ var require_redes = __commonJS({
       return { ...token, access: j.access_token, refresh: j.refresh_token || token.refresh, expira: ahora + (Number(j.expires_in) || 7200) * 1e3 };
     }
     async function perfil(red, s, token, f = fetch, cuentaExt) {
+      if (red === "Instagram" && token.extra && token.extra.modo === "unificado") {
+        const id = cuentaExt || token.cuenta_ext;
+        const { j: j2 } = await pedir(f, `${API.fb}/${v(s)}/${id}?${form({ fields: "id,username,name,followers_count,media_count", access_token: token.access })}`, {}, "Instagram");
+        return { cuenta_ext: String(j2.id || id), nombre: "@" + j2.username, enlace_perfil: `https://www.instagram.com/${j2.username}/`, seguidores: Number(j2.followers_count) || 0, publicaciones_total: Number(j2.media_count) || 0 };
+      }
       if (red === "Instagram") {
         const { j: j2 } = await pedir(f, `${API.ig}/${v(s)}/me?${form({ fields: "user_id,username,name,followers_count,media_count", access_token: token.access })}`, {}, "Instagram");
         return { cuenta_ext: String(j2.user_id || j2.id), nombre: "@" + j2.username, enlace_perfil: `https://www.instagram.com/${j2.username}/`, seguidores: Number(j2.followers_count) || 0, publicaciones_total: Number(j2.media_count) || 0 };
@@ -2988,7 +3034,7 @@ var require_redes = __commonJS({
         const p = { caption, access_token: token.access };
         if (esVideo(medio)) Object.assign(p, { media_type: post.formato === "Story" ? "STORIES" : "REELS", video_url: medio.url });
         else Object.assign(p, { image_url: medio.url }, post.formato === "Story" ? { media_type: "STORIES" } : {});
-        const { j: j2 } = await pedir(f, `${API.ig}/${v(s)}/${cuenta.cuenta_ext}/media`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: form(p) }, "Instagram");
+        const { j: j2 } = await pedir(f, `${igHost(token)}/${v(s)}/${cuenta.cuenta_ext}/media`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: form(p) }, "Instagram");
         return revisar("Instagram", s, token, cuenta, { tipo: "contenedor", id: j2.id }, f);
       }
       if (red === "Facebook") {
@@ -3051,13 +3097,13 @@ var require_redes = __commonJS({
     }
     async function revisar(red, s, token, cuenta, pendiente, f = fetch) {
       if (pendiente.tipo === "contenedor") {
-        const { j } = await pedir(f, `${API.ig}/${v(s)}/${pendiente.id}?${form({ fields: "status_code,status", access_token: token.access })}`, {}, "Instagram");
+        const { j } = await pedir(f, `${igHost(token)}/${v(s)}/${pendiente.id}?${form({ fields: "status_code,status", access_token: token.access })}`, {}, "Instagram");
         if (j.status_code === "ERROR" || j.status_code === "EXPIRED") throw err(`Instagram rechaz\xF3 el archivo: ${j.status || j.status_code}. Revisa formato y duraci\xF3n.`);
         if (j.status_code !== "FINISHED") return { estado: "Procesando", pendiente };
-        const { j: pub } = await pedir(f, `${API.ig}/${v(s)}/${cuenta.cuenta_ext}/media_publish`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: form({ creation_id: pendiente.id, access_token: token.access }) }, "Instagram");
+        const { j: pub } = await pedir(f, `${igHost(token)}/${v(s)}/${cuenta.cuenta_ext}/media_publish`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: form({ creation_id: pendiente.id, access_token: token.access }) }, "Instagram");
         let enlace = cuenta.enlace_perfil || "";
         try {
-          const { j: d } = await pedir(f, `${API.ig}/${v(s)}/${pub.id}?${form({ fields: "permalink", access_token: token.access })}`, {}, "Instagram");
+          const { j: d } = await pedir(f, `${igHost(token)}/${v(s)}/${pub.id}?${form({ fields: "permalink", access_token: token.access })}`, {}, "Instagram");
           if (d.permalink) enlace = d.permalink;
         } catch (e) {
         }
@@ -3078,7 +3124,7 @@ var require_redes = __commonJS({
       if (red === "Instagram") {
         const out = {};
         const pedirIns = async (lista) => {
-          const { j: j2 } = await pedir(f, `${API.ig}/${v(s)}/${pub.id}/insights?${form({ metric: lista, access_token: token.access })}`, {}, "Instagram");
+          const { j: j2 } = await pedir(f, `${igHost(token)}/${v(s)}/${pub.id}/insights?${form({ metric: lista, access_token: token.access })}`, {}, "Instagram");
           for (const m2 of j2.data || []) out[m2.name] = Number((m2.values && m2.values[0] && m2.values[0].value) ?? (m2.total_value && m2.total_value.value)) || 0;
         };
         try {
