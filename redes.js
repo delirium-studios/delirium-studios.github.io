@@ -4,7 +4,7 @@
   const ref = (mod) => () => (D.refs[mod] || []).map(r => ({ value: r.id, label: r.nombre }));
   const canW = (k) => (D.meta.modules.find(m => m.key === k) || {}).level === 'W';
   const isClient = () => ['cliente', 'cliente_eq'].includes(D.me.rol);
-  const REDES = ['Instagram', 'Facebook', 'TikTok', 'YouTube']; // X quedó fuera: su API es de pago
+  const REDES = ['Instagram', 'Facebook', 'TikTok']; // X (API de pago) y YouTube (Google Cloud no acepta Venezuela) quedan programados pero ocultos
   const TONO = { Conectada: 'ok', 'Sin conectar': '', Vencida: 'danger', 'Elegir página': 'warn' };
   const NOTA = {
     Instagram: 'Cuenta profesional (de empresa o creador). Fotos, carruseles de una imagen, reels y stories.',
@@ -151,8 +151,6 @@
           <p class="small muted">Instagram usa el "Unified login" de Meta: el cliente entra con Instagram o Facebook, elige su portfolio comercial y marca su cuenta profesional. Mientras la app esté en modo desarrollo, agrega a cada cliente como <b>Evaluador de Instagram</b> (para Facebook: que te den rol en la app o acceso a su página).</p></div>
         <div class="card"><h2>${chipRed('TikTok')}</h2><form class="form" data-s>${F('tiktok_client_key', 'Client key')}${F('tiktok_client_secret', 'Client secret', 'password')}${F('tiktok_auditada', 'TikTok ya aprobó la app (publicar en público)', 'checkbox')}</form>
           <p class="small muted">Productos: Login Kit y Content Posting API (Direct Post). Hasta la aprobación, los videos salen privados y como máximo 5 cuentas por día.</p></div>
-        <div class="card"><h2>${chipRed('YouTube')}</h2><form class="form" data-s>${F('google_client_id', 'Client ID de Google')}${F('google_client_secret', 'Client secret', 'password')}${F('youtube_auditada', 'Google ya aprobó la app (subir en público)', 'checkbox')}</form>
-          <p class="small muted">Google Cloud: activa "YouTube Data API v3", crea un ID de cliente OAuth tipo "Aplicación web" y agrega los correos de los clientes como usuarios de prueba.</p></div>
       </div>`;
     body.querySelectorAll('[data-copiar]').forEach(b => b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.copiar); D.toast('Copiado.'); } catch (e) { D.toast('No se pudo copiar.', 'error'); } });
   };
